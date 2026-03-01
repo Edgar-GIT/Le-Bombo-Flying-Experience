@@ -1,11 +1,14 @@
-# Ignore text guides inside main/
+# Ignore text guides
 main/*.txt
+*.txt
 
 # Build outputs
 main/LBFE
 main/LBFE.exe
+main/build/
 *.out
 *.exe
+*.o
 
 # OS/editor noise
 .DS_Store

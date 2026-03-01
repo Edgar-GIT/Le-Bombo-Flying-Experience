@@ -52,43 +52,103 @@ This project is intended to keep growing over time.
 - People will be able to build and use their own custom vehicles
 - It will include an optional mode to run as a stress tester and benchmark
 
+## Tools Folder
+
+The `tools/` folder contains helper programs and platform separation:
+
+- `tools/src/build_tool.c`: automated build system that compiles the game and/or vehicle previewer
+- `tools/src/vehicle_previewer.c`: lightweight vehicle preview (left/right arrows + vehicle name)
+- `tools/linux`, `tools/macos`, `tools/windows`: platform-specific build binaries
+
+### Quick Start (Recommended)
+
+From the project root:
+
+```bash
+# Build game and previewer
+./main/tools/linux/build_tool --all
+
+# Run the game
+./main/LBFE
+```
+
+Build options:
+- `--all` - Build both game and previewer
+- `--game` - Build game only
+- `--preview` - Build vehicle previewer only
+- `--run-preview` - Build and run previewer
+- `--help` - Show help
+
+Generated binaries:
+- `main/LBFE` (or `main/LBFE.exe` on Windows)
+- `main/build/<platform>/vehicle_previewer`
+
+The game executable is placed directly in `main/` so relative paths to assets work correctly.
+
+Hot-reload note:
+- A running `.exe`/binary cannot update C code changes in true runtime hot-reload mode by default.
+- Recompile and relaunch using `build_tool` for a faster development cycle.
+
 ## Build And Run
 
-Important:
-- Build and run from inside `main/`
-- Assets are loaded with relative paths (`img/...` and `music/...`)
+### Automated Build (Recommended)
 
-### Linux (GCC + system Raylib)
+From the project root:
 
 ```bash
-cd main
-gcc -std=c99 -O2 \
-    src/main.c src/game.c src/ui.c src/obj.c src/atacks.c src/screens.c src/config.c \
-    -o LBFE \
-    -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
-./LBFE
+./main/tools/linux/build_tool --all    # Linux
+./main/tools/macos/build_tool --all    # macOS
+.\main\tools\windows\build_tool.exe --all  # Windows
 ```
 
-### macOS (Clang + Homebrew Raylib)
+Then run:
+```bash
+./main/LBFE
+```
+
+### Manual Compilation
+
+Assets are loaded with relative paths (`img/...` and `music/...`), so the executable must be in the `main/` directory.
+
+**Linux (GCC + system Raylib)**
 
 ```bash
-cd main
+gcc -std=c99 -O2 \
+    main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c \
+    main/src/atacks.c main/src/screens.c main/src/config.c \
+    -o main/LBFE \
+    -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+
+./main/LBFE
+```
+
+**macOS (Clang + Homebrew Raylib)**
+
+```bash
 clang -std=c99 -O2 \
-    src/main.c src/game.c src/ui.c src/obj.c src/atacks.c src/screens.c src/config.c \
-    -o LBFE \
+    main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c \
+    main/src/atacks.c main/src/screens.c main/src/config.c \
+    -o main/LBFE \
     -I/opt/homebrew/include -L/opt/homebrew/lib -lraylib \
     -framework OpenGL -framework Cocoa -framework IOKit -framework CoreAudio -framework CoreVideo
-./LBFE
+
+./main/LBFE
 ```
 
-### Windows (MinGW/MSYS2)
+**Windows (MinGW/MSYS2)**
 
 ```bash
-cd main
 gcc -std=c99 -O2 \
-    src/main.c src/game.c src/ui.c src/obj.c src/atacks.c src/screens.c src/config.c \
-    -o LBFE.exe \
+    main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c \
+    main/src/atacks.c main/src/screens.c main/src/config.c \
+    -o main/LBFE.exe \
     -I<raylib_include_path> -L<raylib_lib_path> \
     -lraylib -lopengl32 -lgdi32 -lwinmm
-./LBFE.exe
+
+./main/LBFE.exe
+```
+
+For Windows, if using MSYS2:
+```
+-I/mingw64/include -L/mingw64/lib
 ```
