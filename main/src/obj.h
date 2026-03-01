@@ -7,6 +7,7 @@ const char* GetVehicleName(VehicleType vehicle);
 void DrawAirplaneModel(float propellerAngle);
 void DrawHelicopterModel(float rotorAngle);
 void DrawJetModel(float detailAnimAngle);
+void DrawUfoModel(float animAngle);
 void DrawVehicleModel(VehicleType vehicle, float spinnerAngle);
 
 #endif

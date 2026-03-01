@@ -620,7 +620,7 @@ void GameRun(void) {
 
         // --- Fumo ---
         smokeTimer += dt;
-        if (smokeTimer >= SMOKE_SPAWN_INTERVAL) {
+        if (smokeTimer >= SMOKE_SPAWN_INTERVAL && activeVehicle != VEHICLE_UFO) {
             smokeTimer = 0.0f;
             for (int i = 0; i < MAX_SMOKE; i++) {
                 if (!smokeArr[i].active) {
@@ -796,13 +796,33 @@ void GameRun(void) {
                                buildings[i].position.z + buildings[i].size.z/2 }
                 };
 
-                AttackTryLaserBlastOnBuilding(shooting,
-                                              airplanePos, forward,
-                                              &buildings[i],
-                                              &score, &laserAlpha,
-                                              particles, &shockwave, &expFlash,
-                                              crazyColors, numCrazyColors,
-                                              fxExplode);
+                if (activeVehicle == VEHICLE_UFO) {
+                    // UFO atira em 12 direções horizontais
+                    for (int dir = 0; dir < 12; dir++) {
+                        float angle = (dir / 12.0f) * 6.28f;
+                        Vector3 laserDir = {
+                            cosf(angle),
+                            0.0f,  // Mantém horizontal
+                            sinf(angle)
+                        };
+                        laserDir = Vector3Normalize(laserDir);
+                        AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                      airplanePos, laserDir,
+                                                      &buildings[i],
+                                                      &score, &laserAlpha,
+                                                      particles, &shockwave, &expFlash,
+                                                      crazyColors, numCrazyColors,
+                                                      fxExplode);
+                    }
+                } else {
+                    AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                  airplanePos, forward,
+                                                  &buildings[i],
+                                                  &score, &laserAlpha,
+                                                  particles, &shockwave, &expFlash,
+                                                  crazyColors, numCrazyColors,
+                                                  fxExplode);
+                }
 
                 if (CheckCollisionBoxSphere(bBox, airplanePos, 3.5f)) {
                     StopMusicStream(musicBackground); StopMusicStream(musicKirk);
@@ -1032,25 +1052,43 @@ void GameRun(void) {
                     rlPopMatrix();
                 }
 
-                // Laser sai dos canhões (direção forward = -Z local)
+                // Lasers dos canhões
                 if (shooting) {
-                    Vector3 gunRLocal = (Vector3){ 2.5f, -0.05f, 0.0f };
-                    Vector3 gunLLocal = (Vector3){ -2.5f, -0.05f, 0.0f };
-                    if (activeVehicle == VEHICLE_HELICOPTER) {
-                        gunRLocal = (Vector3){ 2.45f, -0.45f, -0.95f };
-                        gunLLocal = (Vector3){ -2.45f, -0.45f, -0.95f };
-                    } else if (activeVehicle == VEHICLE_JET) {
-                        gunRLocal = (Vector3){ 2.55f, -0.15f, -2.0f };
-                        gunLLocal = (Vector3){ -2.55f, -0.15f, -2.0f };
+                    if (activeVehicle == VEHICLE_UFO) {
+                        // UFO dispara em 12 direções horizontais em círculo
+                        for (int dir = 0; dir < 12; dir++) {
+                            float angle = (dir / 12.0f) * 6.28f;  // 0 a 360 graus
+                            Vector3 laserDir = {
+                                cosf(angle),
+                                0.0f,  // Mantém horizontal
+                                sinf(angle)
+                            };
+                            laserDir = Vector3Normalize(laserDir);
+                            Vector3 laserStart = Vector3Add(airplanePos, Vector3Scale(laserDir, 2.5f));
+                            Vector3 laserEnd = Vector3Add(laserStart, Vector3Scale(laserDir, LASER_LENGTH));
+                            DrawCylinderEx(laserStart, laserEnd,
+                                           LASER_RADIUS, LASER_RADIUS, 4, LIME);
+                        }
+                    } else {
+                        // Aviões/Helicóptero/Jet disparam para a frente
+                        Vector3 gunRLocal = (Vector3){ 2.5f, -0.05f, 0.0f };
+                        Vector3 gunLLocal = (Vector3){ -2.5f, -0.05f, 0.0f };
+                        if (activeVehicle == VEHICLE_HELICOPTER) {
+                            gunRLocal = (Vector3){ 2.45f, -0.45f, -0.95f };
+                            gunLLocal = (Vector3){ -2.45f, -0.45f, -0.95f };
+                        } else if (activeVehicle == VEHICLE_JET) {
+                            gunRLocal = (Vector3){ 2.55f, -0.15f, -2.0f };
+                            gunLLocal = (Vector3){ -2.55f, -0.15f, -2.0f };
+                        }
+                        Vector3 wR = Vector3Transform(gunRLocal, rotation);
+                        Vector3 wL = Vector3Transform(gunLLocal, rotation);
+                        Vector3 lR = Vector3Add(airplanePos, wR);
+                        Vector3 lL = Vector3Add(airplanePos, wL);
+                        DrawCylinderEx(lR, Vector3Add(lR, Vector3Scale(forward, LASER_LENGTH)),
+                                       LASER_RADIUS, LASER_RADIUS, 4, LIME);
+                        DrawCylinderEx(lL, Vector3Add(lL, Vector3Scale(forward, LASER_LENGTH)),
+                                       LASER_RADIUS, LASER_RADIUS, 4, LIME);
                     }
-                    Vector3 wR = Vector3Transform(gunRLocal, rotation);
-                    Vector3 wL = Vector3Transform(gunLLocal, rotation);
-                    Vector3 lR = Vector3Add(airplanePos, wR);
-                    Vector3 lL = Vector3Add(airplanePos, wL);
-                    DrawCylinderEx(lR, Vector3Add(lR, Vector3Scale(forward, LASER_LENGTH)),
-                                   LASER_RADIUS, LASER_RADIUS, 4, LIME);
-                    DrawCylinderEx(lL, Vector3Add(lL, Vector3Scale(forward, LASER_LENGTH)),
-                                   LASER_RADIUS, LASER_RADIUS, 4, LIME);
                 }
 
             EndMode3D();

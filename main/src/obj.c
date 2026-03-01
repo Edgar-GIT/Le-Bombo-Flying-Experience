@@ -7,7 +7,8 @@ const char* GetVehicleName(VehicleType vehicle) {
     switch (vehicle) {
         case VEHICLE_HELICOPTER: return "Helicopter";
         case VEHICLE_JET:        return "Jet F-16";
-        case VEHICLE_AIRPLANE:
+        case VEHICLE_AIRPLANE:   return "Airplane";
+        case VEHICLE_UFO:        return "UFO";
         default:                 return "Airplane";
     }
 }
@@ -229,6 +230,58 @@ void DrawJetModel(float detailAnimAngle) {
                    0.24f, 0.12f, 14, Fade(ORANGE, nozzleGlow));
 }
 
+void DrawUfoModel(float animAngle) {
+    // ===== CORPO DO UFO =====
+    // Domo superior (vidro)
+    DrawSphere((Vector3){0, 1.8f, 0}, 2.2f, (Color){100, 180, 220, 200});
+    
+    // Disco principal (metal escuro)
+    for (float h = 0.0f; h <= 1.2f; h += 0.3f) {
+        float radius = 3.2f - (h * 0.5f);  // Afina ligeiramente
+        DrawCylinderEx(
+            (Vector3){0, h, 0}, 
+            (Vector3){0, h + 0.3f, 0},
+            radius, radius - 0.2f, 32,
+            (Color){45, 70, 85, 255}
+        );
+    }
+    
+    // Luzes circulares no disco
+    for (int i = 0; i < 8; i++) {
+        float angle = (i / 8.0f) * 6.28f;
+        float x = cosf(angle) * 2.5f;
+        float z = sinf(angle) * 2.5f;
+        DrawSphere((Vector3){x, 0.6f, z}, 0.35f, YELLOW);
+    }
+    
+    // Antena de topo
+    DrawCylinderEx((Vector3){0, 2.0f, 0}, (Vector3){0, 3.2f, 0}, 
+                   0.15f, 0.08f, 12, (Color){60, 60, 60, 255});
+    DrawSphere((Vector3){0, 3.3f, 0}, 0.25f, (Color){255, 200, 100, 255});
+    
+    // ===== CÍRCULOS SHOCKWAVE SAINDO DE BAIXO =====
+    for (int i = 0; i < 6; i++) {
+        float delay = (float)i * 0.35f;  // Delay entre círculos (em graus)
+        float angle = fmodf(animAngle - delay, 360.0f);  // Cíclico
+        
+        if (angle < 180.0f) {  // Ciclo ativo de 180 graus
+            float progress = angle / 180.0f;  // 0 a 1
+            float size = 0.3f + progress * 4.5f;  // Cresce de 0.3 a 4.8
+            float alpha = 1.0f - (progress * progress);  // Desvanece
+            float yPos = -1.5f - (progress * 12.0f);  // Desce
+            
+            DrawCircle3D(
+                (Vector3){0, yPos, 0},
+                size,
+                (Vector3){1, 0, 0},  // Perpendicular ao plano Y
+                90.0f,
+                Fade(YELLOW, alpha * 0.7f)
+            );
+        }
+    }
+}
+
+
 // =====================================================================
 // FUNÇÃO: Desenha o veículo ativo
 // =====================================================================
@@ -236,7 +289,8 @@ void DrawVehicleModel(VehicleType vehicle, float spinnerAngle) {
     switch (vehicle) {
         case VEHICLE_HELICOPTER: DrawHelicopterModel(spinnerAngle); break;
         case VEHICLE_JET:        DrawJetModel(spinnerAngle); break;
-        case VEHICLE_AIRPLANE:
+        case VEHICLE_AIRPLANE:   DrawAirplaneModel(spinnerAngle); break;
+        case VEHICLE_UFO:        DrawUfoModel(spinnerAngle); break;
         default:                 DrawAirplaneModel(spinnerAngle); break;
     }
 }

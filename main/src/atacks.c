@@ -204,7 +204,7 @@ void AttackUpdateBomb(float dt,
 // =====================================================================
 // FUNÇÃO: Blast do laser sobre um edifício
 // =====================================================================
-void AttackTryLaserBlastOnBuilding(bool shooting,
+void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
                                    Vector3 airplanePos, Vector3 forward,
                                    Building* building,
                                    int* score, float* laserAlpha,
