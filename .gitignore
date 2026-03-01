@@ -1,0 +1,14 @@
+# Ignore text guides inside main/
+main/*.txt
+
+# Build outputs
+main/LBFE
+main/LBFE.exe
+*.out
+*.exe
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
