@@ -40,7 +40,7 @@ You fly around a colorful procedural city, choose different vehicles, and cause 
 ## Clone The Repository
 
 ```bash
-git clone https://github.com/<Edgar-GIT>/Le-Bombo-Flying-Experience.git
+git clone https://github.com/Edgar-GIT/Le-Bombo-Flying-Experience.git
 cd Le-Bombo-Flying-Experience
 ```
 
