@@ -62,9 +62,6 @@
 // --- EXPLOSÃO ESTILO ROCKET ---
 #define MAX_PARTICLES           2200
 #define EXPLOSION_RADIUS        250.0f
-#define EXPLOSION_FLASH_TIME     0.25f
-#define SHOCKWAVE_DURATION       0.7f
-#define SHOCKWAVE_MAX_RADIUS    190.0f
 #define PARTICLE_COUNT_EXPLOSION 500
 #define DEBRIS_COUNT            1150
 #define FIRE_BALL_COUNT          60
@@ -186,22 +183,6 @@ typedef struct {
     Color   color;
     bool    active;
 } RainBlock;
-
-typedef struct {
-    Vector3 center;
-    float   radius;
-    float   maxRadius;
-    float   lifetime;
-    float   maxLifetime;
-    bool    active;
-} Shockwave;
-
-typedef struct {
-    Vector3 position;
-    float   lifetime;
-    float   maxLifetime;
-    bool    active;
-} ExplosionFlash;
 
 typedef struct {
     Vector3 position;

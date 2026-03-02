@@ -27,7 +27,7 @@ void AttackTrySpawnNuke(bool triggerPressed,
 
 void AttackUpdateBomb(float dt,
                       Bomb* bomb, Building* buildings, int* score, float* scaredAlpha,
-                      Particle* particles, Shockwave* shockwave, ExplosionFlash* expFlash,
+                      Particle* particles,
                       Color* crazyColors, int numColors,
                       Sound fxKaboom);
 
@@ -35,8 +35,7 @@ void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
                                    Vector3 airplanePos, Vector3 forward,
                                    Building* building,
                                    int* score, float* laserAlpha,
-                                   Particle* particles, Shockwave* shockwave,
-                                   ExplosionFlash* expFlash,
+                                   Particle* particles,
                                    Color* crazyColors, int numColors,
                                    Sound fxExplode);
 
@@ -46,7 +45,7 @@ void AttackUpdateNuke(float dt,
                       float* nukeCoverAlpha, bool* worldWipedByNuke,
                       bool* nukeRainActive, float* nukeRainTimer, float* nukeRainSpawnTimer,
                       int* lastKirkScore, int* lastDimaScore,
-                      Particle* particles, Shockwave* shockwave, ExplosionFlash* expFlash,
+                      Particle* particles,
                       Sound fxNukeHit);
 
 bool AttackUpdateNukeRain(float dt,
@@ -59,9 +58,7 @@ void AttackUpdateNukeTrails(float dt, NukeTrail* nukeTrails);
 void AttackUpdateRainBlocks(float dt, RainBlock* rainBlocks);
 
 void SpawnExplosion(Vector3 pos, Particle* particles,
-                    Shockwave* shockwave, ExplosionFlash* flash,
                     Color* crazyColors, int numColors);
-void SpawnNukeExplosion(Vector3 pos, Particle* particles,
-                        Shockwave* shockwave, ExplosionFlash* flash);
+void SpawnNukeExplosion(Vector3 pos, Particle* particles);
 
 #endif

@@ -149,7 +149,7 @@ void AttackTrySpawnNuke(bool triggerPressed,
 //fisica da bomba normal + explosao (blast)
 void AttackUpdateBomb(float dt,
                       Bomb* bomb, Building* buildings, int* score, float* scaredAlpha,
-                      Particle* particles, Shockwave* shockwave, ExplosionFlash* expFlash,
+                      Particle* particles,
                       Color* crazyColors, int numColors,
                       Sound fxKaboom) {
     (void)dt;
@@ -185,7 +185,7 @@ void AttackUpdateBomb(float dt,
     bomb->active = false;
     *scaredAlpha = 1.0f;
     PlaySound(fxKaboom);
-    SpawnExplosion(bomb->position, particles, shockwave, expFlash, crazyColors, numColors);
+    SpawnExplosion(bomb->position, particles, crazyColors, numColors);
 
     for (int i = 0; i < MAX_BUILDINGS; i++) {
         if (buildings[i].active &&
@@ -202,8 +202,7 @@ void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
                                    Vector3 airplanePos, Vector3 forward,
                                    Building* building,
                                    int* score, float* laserAlpha,
-                                   Particle* particles, Shockwave* shockwave,
-                                   ExplosionFlash* expFlash,
+                                   Particle* particles,
                                    Color* crazyColors, int numColors,
                                    Sound fxExplode) {
     if (!shooting || !building->active) return;
@@ -225,7 +224,7 @@ void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
     *score += building->isGolden ? 500 : 100;
     PlaySound(fxExplode);
     *laserAlpha = 1.0f;
-    SpawnExplosion(laserHit.point, particles, shockwave, expFlash, crazyColors, numColors);
+    SpawnExplosion(laserHit.point, particles, crazyColors, numColors);
 }
 
 
@@ -236,7 +235,7 @@ void AttackUpdateNuke(float dt,
                       float* nukeCoverAlpha, bool* worldWipedByNuke,
                       bool* nukeRainActive, float* nukeRainTimer, float* nukeRainSpawnTimer,
                       int* lastKirkScore, int* lastDimaScore,
-                      Particle* particles, Shockwave* shockwave, ExplosionFlash* expFlash,
+                      Particle* particles,
                       Sound fxNukeHit) {
 
     if (nukeBomb->active) {
@@ -315,7 +314,7 @@ void AttackUpdateNuke(float dt,
     *lastKirkScore = *score;
     *lastDimaScore = *score;
 
-    SpawnNukeExplosion(nukeBomb->position, particles, shockwave, expFlash);
+    SpawnNukeExplosion(nukeBomb->position, particles);
     for (int i = 0; i < MAX_BUILDINGS; i++) {
         if (buildings[i].active) {
             buildings[i].active = false;
@@ -409,24 +408,7 @@ void AttackUpdateRainBlocks(float dt, RainBlock* rainBlocks) {
 
 //spawna explosao normal
 void SpawnExplosion(Vector3 pos, Particle* particles,
-                    Shockwave* shockwave, ExplosionFlash* flash,
                     Color* crazyColors, int numColors) {
-
-    //flash branco instantaneo
-    flash->position    = pos;
-    flash->lifetime    = EXPLOSION_FLASH_TIME;
-    flash->maxLifetime = EXPLOSION_FLASH_TIME;
-    flash->active      = true;
-
-    //onda de choque no chao
-    if (!shockwave->active) {
-        shockwave->center      = pos;
-        shockwave->radius      = 0.0f;
-        shockwave->maxRadius   = SHOCKWAVE_MAX_RADIUS;
-        shockwave->lifetime    = SHOCKWAVE_DURATION;
-        shockwave->maxLifetime = SHOCKWAVE_DURATION;
-        shockwave->active      = true;
-    }
 
     //faiscas coloridas
     int s = 0;
@@ -501,20 +483,7 @@ void SpawnExplosion(Vector3 pos, Particle* particles,
 }
 
 //spawna mega explosao nuclear 
-void SpawnNukeExplosion(Vector3 pos, Particle* particles,
-                        Shockwave* shockwave, ExplosionFlash* flash) {
-    flash->position    = pos;
-    flash->lifetime    = EXPLOSION_FLASH_TIME * 3.0f;
-    flash->maxLifetime = EXPLOSION_FLASH_TIME * 3.0f;
-    flash->active      = true;
-
-    shockwave->center      = pos;
-    shockwave->radius      = 0.0f;
-    shockwave->maxRadius   = SHOCKWAVE_MAX_RADIUS * 2.8f;
-    shockwave->lifetime    = SHOCKWAVE_DURATION * 2.6f;
-    shockwave->maxLifetime = SHOCKWAVE_DURATION * 2.6f;
-    shockwave->active      = true;
-
+void SpawnNukeExplosion(Vector3 pos, Particle* particles) {
     int spawned = 0;
     int targetCount = (int)(MAX_PARTICLES * 0.95f);
     for (int i = 0; i < MAX_PARTICLES && spawned < targetCount; i++) {
