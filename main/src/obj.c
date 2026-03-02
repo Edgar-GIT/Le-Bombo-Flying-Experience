@@ -1,8 +1,6 @@
 #include "obj.h"
 
-// =====================================================================
-// FUNÇÃO: Nome amigável do veículo
-// =====================================================================
+//nome dos veiculos
 const char* GetVehicleName(VehicleType vehicle) {
     switch (vehicle) {
         case VEHICLE_HELICOPTER: return "Helicopter";
@@ -13,9 +11,7 @@ const char* GetVehicleName(VehicleType vehicle) {
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Desenha o modelo do avião
-// =====================================================================
+//modelo aviao
 void DrawAirplaneModel(float propellerAngle) {
     // Fuselagem traseira afina para -Z (cauda)
     DrawCylinderEx((Vector3){0,0, 1.5f}, (Vector3){0,0, 4.5f},
@@ -61,7 +57,7 @@ void DrawAirplaneModel(float propellerAngle) {
     DrawCube((Vector3){0,0.0f, 3.3f},3.6f,0.12f,0.12f,YELLOW);
     DrawCube((Vector3){0,0.0f, 3.5f},3.6f,0.12f,0.12f,BLUE);
 
-    // Canhões nas asas (apontam para -Z = frente)
+    // Canhoes nas asas (apontam para -Z = frente)
     DrawCylinderEx((Vector3){ 2.5f,-0.05f,-3.8f},(Vector3){ 2.5f,-0.05f,-2.0f},
                    0.08f,0.08f,8,(Color){30,30,30,255});
     DrawCylinderEx((Vector3){ 3.8f,-0.05f,-3.3f},(Vector3){ 3.8f,-0.05f,-1.5f},
@@ -71,7 +67,7 @@ void DrawAirplaneModel(float propellerAngle) {
     DrawCylinderEx((Vector3){-3.8f,-0.05f,-3.3f},(Vector3){-3.8f,-0.05f,-1.5f},
                    0.07f,0.07f,8,(Color){30,30,30,255});
 
-    // Hélice de 3 pás (na frente, -Z)
+    // Helice de 3 pas (na frente, -Z)
     rlPushMatrix();
         rlTranslatef(0, 0, -5.1f);
         rlRotatef(propellerAngle, 0, 0, 1);
@@ -88,9 +84,7 @@ void DrawAirplaneModel(float propellerAngle) {
     rlPopMatrix();
 }
 
-// =====================================================================
-// FUNÇÃO: Desenha o modelo do helicóptero
-// =====================================================================
+//modelo helicoptero
 void DrawHelicopterModel(float rotorAngle) {
     // Corpo principal (nariz + fuselagem)
     DrawCylinderEx((Vector3){0,0.10f,-4.8f}, (Vector3){0,0.35f, 2.2f},
@@ -104,7 +98,7 @@ void DrawHelicopterModel(float rotorAngle) {
     DrawCube((Vector3){0,1.00f,-3.40f}, 1.25f,0.6f,1.35f, (Color){120,170,210,150});
     DrawCubeWires((Vector3){0,1.00f,-3.40f}, 1.27f,0.62f,1.37f, (Color){65,65,70,255});
 
-    // Sensor/canhão frontal
+    // Sensor/canhao frontal
     DrawSphere((Vector3){0,-0.20f,-4.95f}, 0.36f, (Color){34,34,34,255});
     DrawCylinderEx((Vector3){0,-0.35f,-4.75f}, (Vector3){0,-0.35f,-5.75f},
                    0.10f, 0.08f, 10, (Color){26,26,26,255});
@@ -170,9 +164,7 @@ void DrawHelicopterModel(float rotorAngle) {
     rlPopMatrix();
 }
 
-// =====================================================================
-// FUNÇÃO: Desenha o modelo do jet (estilo F-16)
-// =====================================================================
+//modelo jato f16
 void DrawJetModel(float detailAnimAngle) {
     Color bodyMain  = (Color){ 128, 134, 142, 255 };
     Color bodyDark  = (Color){ 90, 96, 104, 255 };
@@ -212,17 +204,17 @@ void DrawJetModel(float detailAnimAngle) {
     DrawCube((Vector3){ 1.85f, 0.14f, 5.3f}, 2.4f, 0.10f, 1.2f, bodyDark);
     DrawCube((Vector3){-1.85f, 0.14f, 5.3f}, 2.4f, 0.10f, 1.2f, bodyDark);
 
-    // Deriva vertical única
+    // Deriva vertical unica
     DrawCube((Vector3){0, 1.08f, 4.9f}, 0.22f, 2.15f, 1.85f, bodyDark);
     DrawCube((Vector3){0, 1.40f, 5.45f}, 0.12f, 1.10f, 0.95f, bodyLight);
 
-    // Trilhos/mísseis nas pontas das asas
+    // Trilhos/misseis nas pontas das asas
     DrawCylinderEx((Vector3){ 5.9f, -0.10f, -0.55f}, (Vector3){ 6.9f, -0.10f, -0.55f},
                    0.10f, 0.08f, 10, (Color){178, 182, 188, 255});
     DrawCylinderEx((Vector3){-5.9f, -0.10f, -0.55f}, (Vector3){-6.9f, -0.10f, -0.55f},
                    0.10f, 0.08f, 10, (Color){178, 182, 188, 255});
 
-    // Bocal do motor com animação subtil
+    // Bocal do motor com animaçao subtil
     float nozzleGlow = 0.25f + fabsf(sinf(detailAnimAngle * DEG2RAD)) * 0.35f;
     DrawCylinderEx((Vector3){0, 0.0f, 6.55f}, (Vector3){0, 0.0f, 7.25f},
                    0.46f, 0.38f, 18, (Color){45, 47, 52, 255});
@@ -259,7 +251,7 @@ void DrawUfoModel(float animAngle) {
                    0.15f, 0.08f, 12, (Color){60, 60, 60, 255});
     DrawSphere((Vector3){0, 3.3f, 0}, 0.25f, (Color){255, 200, 100, 255});
 
-    // círculos animados por baixo do UFO
+    // circulos animados por baixo do UFO
     for (int i = 0; i < 6; i++) {
         float delay = (float)i * 0.35f;
         float angle = fmodf(animAngle - delay, 360.0f);
@@ -282,9 +274,7 @@ void DrawUfoModel(float animAngle) {
 }
 
 
-// =====================================================================
-// FUNÇÃO: Desenha o veículo ativo
-// =====================================================================
+//desenha veiculo ativo
 void DrawVehicleModel(VehicleType vehicle, float spinnerAngle) {
     switch (vehicle) {
         case VEHICLE_HELICOPTER: DrawHelicopterModel(spinnerAngle); break;
