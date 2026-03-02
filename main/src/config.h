@@ -19,7 +19,7 @@
 #define CLOUD_MIN_Y            200.0f
 #define CLOUD_MAX_Y            300.0f
 
-// --- AVIÃO ---
+// --- AVIAO ---
 #define AIRPLANE_SPEED           2.5f
 #define AIRPLANE_SPEED_SLOW      0.75f
 #define AIRPLANE_SPEED_FAST      6.6f
@@ -59,7 +59,7 @@
 #define MAX_NUKE_RAIN_BLOCKS     820
 #define KIRK_MAX_PLAY_TIME      12.0f
 
-// --- EXPLOSÃO ESTILO ROCKET ---
+// --- EXPLOSAO ESTILO ROCKET ---
 #define MAX_PARTICLES           2200
 #define EXPLOSION_RADIUS        250.0f
 #define PARTICLE_COUNT_EXPLOSION 500
@@ -72,7 +72,7 @@
 #define SMOKE_LIFETIME           1.8f
 #define SMOKE_EXPAND_SPEED       1.5f
 
-// --- EDIFÍCIOS ---
+// --- EDIFICIOS ---
 #define GOLDEN_BUILDING_CHANCE   2
 #define GOLDEN_MIN_HEIGHT       70.0f
 #define GOLDEN_MAX_HEIGHT      120.0f
