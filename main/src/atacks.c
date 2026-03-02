@@ -1,35 +1,34 @@
 #include "atacks.h"
 
-// =====================================================================
-// FUNÇÃO: Desenha bomba nuclear em queda
-// =====================================================================
+
+//desenha bomba nuclear em queda
 void DrawNukeBombModel(float spinAngle) {
     rlPushMatrix();
         rlRotatef(spinAngle, 0, 1, 0);
-        // Corpo principal
+        //corpo cilindrico principal
         DrawCylinderEx((Vector3){0, 3.2f, 0}, (Vector3){0, -3.8f, 0},
                        1.05f, 1.35f, 22, (Color){55, 65, 72, 255});
-        // Cone da frente
+        //cone da frente
         DrawCylinderEx((Vector3){0, 5.3f, 0}, (Vector3){0, 3.2f, 0},
                        0.0f, 1.0f, 22, (Color){75, 88, 98, 255});
-        // Traseira
+        //traseira
         DrawCylinderEx((Vector3){0, -3.8f, 0}, (Vector3){0, -5.0f, 0},
                        1.35f, 0.75f, 20, (Color){45, 52, 58, 255});
-        // Aletas
+        //aletas
         DrawCube((Vector3){ 1.45f,-4.2f, 0.0f}, 0.15f, 2.0f, 1.8f, (Color){95,110,118,255});
         DrawCube((Vector3){-1.45f,-4.2f, 0.0f}, 0.15f, 2.0f, 1.8f, (Color){95,110,118,255});
         DrawCube((Vector3){ 0.0f,-4.2f, 1.45f}, 1.8f, 2.0f, 0.15f, (Color){95,110,118,255});
         DrawCube((Vector3){ 0.0f,-4.2f,-1.45f}, 1.8f, 2.0f, 0.15f, (Color){95,110,118,255});
-        // Faixa
+        //faixa
         DrawCylinderEx((Vector3){0, 0.7f, 0}, (Vector3){0, 0.2f, 0},
                        1.36f, 1.36f, 20, (Color){235, 208, 56, 255});
     rlPopMatrix();
 }
 
-// =====================================================================
-// FUNÇÃO: Sistema de disparo (tiro único + metralhadora)
-// Retorna true quando deve haver tiro neste frame
-// =====================================================================
+
+//sistema de disparo (blast + metralhadora)
+//retorna true quando deve haver tiro neste frame
+
 bool AttackUpdateMachineGun(float dt,
                             float* spaceHeldTime, bool* machineGunActive,
                             float* machineGunFireTimer, float* machineGunCooldown,
@@ -37,7 +36,7 @@ bool AttackUpdateMachineGun(float dt,
                             Sound fxShoot, Sound fxMachine) {
     bool shooting = false;
 
-    // Reduz cooldown (só ativo após metralhadora)
+    //reduz cooldown (so ativo apos metralhadora)
     if (*machineGunCooldown > 0.0f) {
         *machineGunCooldown -= dt;
         if (*machineGunCooldown < 0.0f) *machineGunCooldown = 0.0f;
@@ -48,13 +47,13 @@ bool AttackUpdateMachineGun(float dt,
             *spaceHeldTime += dt;
 
             if (!*machineGunActive) {
-                // Tiro único no primeiro frame de press
+                //blast no primeiro frame
                 if (IsKeyPressed(KEY_SPACE)) {
                     PlaySound(fxShoot);
                     shooting = true;
                 }
 
-                // Após tempo mínimo, ativa metralhadora
+                //apos 1 segundo ativa machine gun
                 if (*spaceHeldTime >= MACHINE_GUN_ACTIVATE_TIME) {
                     *machineGunActive = true;
                     *machineGunFireTimer = 0.0f;
@@ -62,7 +61,7 @@ bool AttackUpdateMachineGun(float dt,
                     if (!IsSoundPlaying(fxMachine)) PlaySound(fxMachine);
                 }
             } else {
-                // Modo metralhadora — dispara continuamente
+                //machine gun dispara continuamente
                 *machineGunFireTimer += dt;
                 if (*machineGunFireTimer >= MACHINE_GUN_FIRE_RATE) {
                     *machineGunFireTimer = 0.0f;
@@ -74,7 +73,7 @@ bool AttackUpdateMachineGun(float dt,
     }
 
     if (IsKeyReleased(KEY_SPACE)) {
-        // Cooldown só se esteve em metralhadora
+        //cooldown se metralhadora
         if (*machineGunActive) {
             *machineGunCooldown = MACHINE_GUN_COOLDOWN;
         }
@@ -87,9 +86,8 @@ bool AttackUpdateMachineGun(float dt,
     return shooting;
 }
 
-// =====================================================================
-// FUNÇÃO: Regeneração automática de bombas
-// =====================================================================
+
+//regeneraçao automatica de bombas
 void AttackUpdateBombInventory(float dt, int* bombCount, float* bombRegenTimer) {
     if (*bombCount < MAX_BOMBS) {
         *bombRegenTimer += dt;
@@ -102,9 +100,8 @@ void AttackUpdateBombInventory(float dt, int* bombCount, float* bombRegenTimer) 
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Disparo da bomba normal (tecla B)
-// =====================================================================
+
+//disparo da bomba normal (B)
 void AttackTrySpawnBomb(bool triggerPressed,
                         Bomb* bomb, int* bombCount,
                         VehicleType activeVehicle,
@@ -125,9 +122,8 @@ void AttackTrySpawnBomb(bool triggerPressed,
     PlaySound(fxAlert);
 }
 
-// =====================================================================
-// FUNÇÃO: Disparo da bomba nuclear (tecla F, 1 uso)
-// =====================================================================
+
+//disparo da bomba nuclear (F, 1 time use)
 void AttackTrySpawnNuke(bool triggerPressed,
                         NukeBomb* nukeBomb,
                         Vector3 airplanePos, Vector3 forward,
@@ -149,9 +145,8 @@ void AttackTrySpawnNuke(bool triggerPressed,
     PlaySound(fxFail);
 }
 
-// =====================================================================
-// FUNÇÃO: Física da bomba normal + explosão (blast)
-// =====================================================================
+
+//fisica da bomba normal + explosao (blast)
 void AttackUpdateBomb(float dt,
                       Bomb* bomb, Building* buildings, int* score, float* scaredAlpha,
                       Particle* particles, Shockwave* shockwave, ExplosionFlash* expFlash,
@@ -201,9 +196,8 @@ void AttackUpdateBomb(float dt,
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Blast do laser sobre um edifício
-// =====================================================================
+
+//blast do laser sobre um edificio
 void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
                                    Vector3 airplanePos, Vector3 forward,
                                    Building* building,
@@ -234,9 +228,8 @@ void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
     SpawnExplosion(laserHit.point, particles, shockwave, expFlash, crazyColors, numColors);
 }
 
-// =====================================================================
-// FUNÇÃO: Física da bomba nuclear e impacto global
-// =====================================================================
+
+//fisica da bomba nuclear e impacto global
 void AttackUpdateNuke(float dt,
                       NukeBomb* nukeBomb, Building* buildings, int* score,
                       NukeTrail* nukeTrails, float* nukeTrailTimer, float* nukeAlertTimer,
@@ -245,6 +238,7 @@ void AttackUpdateNuke(float dt,
                       int* lastKirkScore, int* lastDimaScore,
                       Particle* particles, Shockwave* shockwave, ExplosionFlash* expFlash,
                       Sound fxNukeHit) {
+
     if (nukeBomb->active) {
         *nukeAlertTimer += dt * NUKE_ALERT_BLINK_SPEED;
         nukeBomb->position = Vector3Add(nukeBomb->position, nukeBomb->velocity);
@@ -330,10 +324,10 @@ void AttackUpdateNuke(float dt,
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Chuva de blocos pós-nuke (spawn) e fim do evento
-// Retorna true quando a chuva terminou
-// =====================================================================
+
+//chuva de blocos pos-nuke (spawn) e fim do evento
+//retorna true quando a chuva terminou
+
 bool AttackUpdateNukeRain(float dt,
                           bool* nukeRainActive,
                           float* nukeRainTimer, float* nukeRainSpawnTimer,
@@ -383,9 +377,8 @@ bool AttackUpdateNukeRain(float dt,
     return true;
 }
 
-// =====================================================================
-// FUNÇÃO: Física do rasto da bomba nuclear
-// =====================================================================
+
+//fisica do rasto da bomba nuclear
 void AttackUpdateNukeTrails(float dt, NukeTrail* nukeTrails) {
     for (int i = 0; i < MAX_NUKE_TRAILS; i++) {
         if (nukeTrails[i].active) {
@@ -398,9 +391,8 @@ void AttackUpdateNukeTrails(float dt, NukeTrail* nukeTrails) {
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Física dos blocos da chuva pós-nuke
-// =====================================================================
+
+//fisica dos blocos da chuva pos-nuke
 void AttackUpdateRainBlocks(float dt, RainBlock* rainBlocks) {
     for (int i = 0; i < MAX_NUKE_RAIN_BLOCKS; i++) {
         if (rainBlocks[i].active) {
@@ -414,20 +406,19 @@ void AttackUpdateRainBlocks(float dt, RainBlock* rainBlocks) {
     (void)dt;
 }
 
-// =====================================================================
-// FUNÇÃO: Spawna explosão normal
-// =====================================================================
+
+//spawna explosao normal
 void SpawnExplosion(Vector3 pos, Particle* particles,
                     Shockwave* shockwave, ExplosionFlash* flash,
                     Color* crazyColors, int numColors) {
 
-    // Flash branco instantâneo
+    //flash branco instantaneo
     flash->position    = pos;
     flash->lifetime    = EXPLOSION_FLASH_TIME;
     flash->maxLifetime = EXPLOSION_FLASH_TIME;
     flash->active      = true;
 
-    // Onda de choque no chão
+    //onda de choque no chao
     if (!shockwave->active) {
         shockwave->center      = pos;
         shockwave->radius      = 0.0f;
@@ -437,7 +428,7 @@ void SpawnExplosion(Vector3 pos, Particle* particles,
         shockwave->active      = true;
     }
 
-    // --- FAÍSCAS COLORIDAS (disparam para longe rapidamente) ---
+    //faiscas coloridas
     int s = 0;
     for (int i = 0; i < MAX_PARTICLES && s < PARTICLE_COUNT_EXPLOSION; i++) {
         if (!particles[i].active) {
@@ -461,7 +452,7 @@ void SpawnExplosion(Vector3 pos, Particle* particles,
         }
     }
 
-    // --- BOLAS DE FOGO (laranja/amarelo, sobem e dissipam) ---
+    //bolas de fogo (laranja/amarelo, sobem e dissipam)
     int f = 0;
     for (int i = 0; i < MAX_PARTICLES && f < FIRE_BALL_COUNT; i++) {
         if (!particles[i].active) {
@@ -485,7 +476,7 @@ void SpawnExplosion(Vector3 pos, Particle* particles,
         }
     }
 
-    // --- DESTROÇOS (blocos pesados que caem e rebatem) ---
+    //destroços (blocos pesados que caem e rebatem)
     int d = 0;
     for (int i = 0; i < MAX_PARTICLES && d < DEBRIS_COUNT; i++) {
         if (!particles[i].active) {
@@ -509,9 +500,7 @@ void SpawnExplosion(Vector3 pos, Particle* particles,
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Spawna mega explosão nuclear (muito mais violenta)
-// =====================================================================
+//spawna mega explosao nuclear 
 void SpawnNukeExplosion(Vector3 pos, Particle* particles,
                         Shockwave* shockwave, ExplosionFlash* flash) {
     flash->position    = pos;

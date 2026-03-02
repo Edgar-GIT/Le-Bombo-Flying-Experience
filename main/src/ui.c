@@ -1,9 +1,8 @@
 #include "ui.h"
 #include "obj.h"
 
-// =====================================================================
-// FUNÇÃO: Desenha botão goofy para menus
-// =====================================================================
+//desenha goofy buttons pros menus
+
 bool DrawGoofyButton(Rectangle rect, const char* label, Color baseColor, float t) {
     bool hover = CheckCollisionPointRec(GetMousePosition(), rect);
     float pulse = hover ? (sinf(t * 8.0f) * 3.0f + 4.0f) : 0.0f;
@@ -28,9 +27,8 @@ bool DrawGoofyButton(Rectangle rect, const char* label, Color baseColor, float t
     return hover && IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
 }
 
-// =====================================================================
-// FUNÇÃO: Desenha botão de seta lateral
-// =====================================================================
+//desenha botoes de seta lateral
+
 bool DrawArrowButton(Rectangle rect, bool left, float t) {
     bool hover = CheckCollisionPointRec(GetMousePosition(), rect);
     Color fill = hover ? Fade((Color){ 18, 18, 24, 255 }, 0.98f)
@@ -57,9 +55,8 @@ bool DrawArrowButton(Rectangle rect, bool left, float t) {
     return hover && IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
 }
 
-// =====================================================================
-// FUNÇÃO: Título animado goofy
-// =====================================================================
+//desenhar goofy title
+
 void DrawGoofyTitle(const char* text, float t) {
     Font font = GetFontDefault();
     float fontSize = 62.0f;
@@ -82,9 +79,8 @@ void DrawGoofyTitle(const char* text, float t) {
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Render do menu principal
-// =====================================================================
+//render do menu principal
+
 MainMenuResult UIDrawMainMenu(Texture2D imgMenu, float t) {
     MainMenuResult result = { 0 };
 
@@ -117,9 +113,8 @@ MainMenuResult UIDrawMainMenu(Texture2D imgMenu, float t) {
     return result;
 }
 
-// =====================================================================
-// FUNÇÃO: Render da camada UI no menu de veículos
-// =====================================================================
+//render da camara no preview menu
+
 VehicleMenuResult UIDrawVehicleMenuUI(float t, float uiOffsetY,
                                       VehicleType previewVehicle,
                                       bool menuSliding) {
@@ -160,9 +155,8 @@ VehicleMenuResult UIDrawVehicleMenuUI(float t, float uiOffsetY,
     return result;
 }
 
-// =====================================================================
-// FUNÇÃO: Ecrã de lose
-// =====================================================================
+//lose screen
+
 void UIDrawLoseScreen(Texture2D imgLose, bool blinkOn) {
     ClearBackground(BLACK);
     DrawTexturePro(imgLose,
@@ -177,9 +171,8 @@ void UIDrawLoseScreen(Texture2D imgLose, bool blinkOn) {
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Overlays de imagens de gameplay
-// =====================================================================
+//overlays imagem gameplay
+
 void UIDrawGameplayOverlays(Texture2D imgBomb, Texture2D imgScared,
                             Texture2D imgKirk, Texture2D imgDima,
                             Texture2D imgNk, Texture2D imgMachine,
@@ -222,9 +215,8 @@ void UIDrawGameplayOverlays(Texture2D imgBomb, Texture2D imgScared,
     }
 }
 
-// =====================================================================
-// FUNÇÃO: HUD de gameplay
-// =====================================================================
+//HUD gameplay
+
 void UIDrawGameplayHUD(int score, bool blinkOn,
                        int bombCount, float bombRegenTimer,
                        bool nukeUsed, float machineGunCooldown,
@@ -293,9 +285,8 @@ void UIDrawGameplayHUD(int score, bool blinkOn,
              6,GetScreenHeight()-28,15,YELLOW);
 }
 
-// =====================================================================
-// FUNÇÃO: Mira em first-person
-// =====================================================================
+//first person crosshair
+
 void UIDrawCrosshair(void) {
     DrawCircleLines(GetScreenWidth()/2,GetScreenHeight()/2,10,LIME);
     DrawLine(GetScreenWidth()/2-20,GetScreenHeight()/2,

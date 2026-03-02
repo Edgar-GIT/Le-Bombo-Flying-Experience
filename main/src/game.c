@@ -15,15 +15,13 @@ bool FootprintsOverlap(Vector3 posA, Vector3 sizeA, Vector3 posB, Vector3 sizeB)
     float bMinZ = posB.z - sizeB.z * 0.5f;
     float bMaxZ = posB.z + sizeB.z * 0.5f;
 
-    // Se só encostarem (borda com borda), não conta como sobreposição
+    //se so encostarem, non overlap
     bool overlapX = (aMinX < bMaxX) && (aMaxX > bMinX);
     bool overlapZ = (aMinZ < bMaxZ) && (aMaxZ > bMinZ);
     return overlapX && overlapZ;
 }
 
-// =====================================================================
-// FUNÇÃO: Verifica se um edifício sobrepõe qualquer outro ativo
-// =====================================================================
+//verifica sobreposicao com outros edificios
 bool OverlapsAnyBuilding(Vector3 pos, Vector3 size, Building* buildings, int selfIndex) {
     for (int i = 0; i < MAX_BUILDINGS; i++) {
         if (i == selfIndex) continue;
@@ -33,9 +31,7 @@ bool OverlapsAnyBuilding(Vector3 pos, Vector3 size, Building* buildings, int sel
     return false;
 }
 
-// =====================================================================
-// FUNÇÃO: Inicializa uma nuvem
-// =====================================================================
+//cria nuvens
 void InitCloud(Cloud* c, Color* crazyColors, int numColors) {
     c->position = (Vector3){
         (float)GetRandomValue(-(int)WORLD_HALF_SIZE, (int)WORLD_HALF_SIZE),
@@ -46,9 +42,7 @@ void InitCloud(Cloud* c, Color* crazyColors, int numColors) {
     c->color  = crazyColors[GetRandomValue(0, numColors - 1)];
 }
 
-// =====================================================================
-// FUNÇÃO: Desenha detalhes de janelas/linhas no edifício
-// =====================================================================
+//janelas edificios
 void DrawBuildingWindows(const Building* b) {
     float yMin = 0.8f;
     float yMax = b->size.y - 0.8f;
@@ -102,9 +96,7 @@ void DrawBuildingWindows(const Building* b) {
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Inicializa um edifício
-// =====================================================================
+//inicializa um edificio
 void InitBuilding(Building* b, Building* buildings, int selfIndex,
                   Color* crazyColors, int numColors) {
     b->isGolden = (GetRandomValue(0, 99) < GOLDEN_BUILDING_CHANCE);
@@ -171,7 +163,7 @@ void InitBuilding(Building* b, Building* buildings, int selfIndex,
         }
     }
 
-    // Se falhar tudo (extremamente improvável), não ativa para evitar sobreposição
+    // Se falhar tudo , nao ativa para evitar sobreposição
     if (!placed) {
         b->active = false;
         b->size = newSize;
@@ -188,10 +180,7 @@ void InitBuilding(Building* b, Building* buildings, int selfIndex,
     b->timeSinceHit = 0.0f;
 }
 
-// =====================================================================
-// FUNÇÃO: Spawna explosão completa estilo rocket
-// Gera: flash branco, bola de fogo, anel de choque, faíscas, destroços
-// =====================================================================
+// jogo
 void GameRun(void) {
 
     Sound fxExplode  = LoadSound(SFX_EXPLODE);
@@ -273,18 +262,10 @@ void GameRun(void) {
     float cloudLayerMaxY  = CLOUD_MAX_Y;
     float blinkTimer     = 0.0f;
 
-    // -------------------------------------------------------------------
-    // SISTEMA DE DISPARO — estado interno
-    //
-    // spaceHeldTime: quanto tempo o espaço está segurado NESTA sessão de press
-    // machineGunActive: true = está em modo metralhadora
-    // machineGunFireTimer: conta para o próximo tiro automático
-    // machineGunCooldown: só ativo APÓS sair da metralhadora (não afeta tiro único)
-    // -------------------------------------------------------------------
-    float spaceHeldTime      = 0.0f;   // Tempo a segurar espaço
-    bool  machineGunActive   = false;  // Está em modo metralhadora?
-    float machineGunFireTimer = 0.0f;  // Timer entre tiros automáticos
-    float machineGunCooldown  = 0.0f;  // Cooldown pós-metralhadora
+    float spaceHeldTime      = 0.0f;   
+    bool  machineGunActive   = false;  
+    float machineGunFireTimer = 0.0f;  
+    float machineGunCooldown  = 0.0f;  
 
     Vector3    airplanePos         = { 0.0f, 40.0f, 0.0f };
     Quaternion airplaneOrientation = QuaternionIdentity();
@@ -311,9 +292,7 @@ void GameRun(void) {
         bool blinkOn = sinf(blinkTimer * 3.14159f) > 0.0f;
         if (IsKeyPressed(KEY_F11)) ToggleFullscreen();
 
-        // =====================================================================
-        // MENUS
-        // =====================================================================
+        //menus
         if (screenState != SCREEN_GAMEPLAY) {
             UpdateMusicStream(musicMenu);
             if (!IsMusicStreamPlaying(musicMenu)) PlayMusicStream(musicMenu);
@@ -406,7 +385,7 @@ void GameRun(void) {
                     }
 
                     if (menuAction.play) {
-                        // Arranca sessão de jogo com veículo escolhido
+                        //arranca sessao de jogo com veiculo escolhido
                         activeVehicle = previewVehicle;
                         score = 0; lastKirkScore = 0; lastDimaScore = 0; lastNkScore = 0;
                         bombCount = MAX_BOMBS; bombRegenTimer = 0.0f;
@@ -545,7 +524,7 @@ void GameRun(void) {
 
         if (IsKeyPressed(KEY_O))   firstPersonMode = !firstPersonMode;
 
-        // --- Controlos avião ---
+        // --- Controlos aviao ---
         float pitchInput = 0.0f;
         float yawInput   = 0.0f;
         float rollInput  = 0.0f;
@@ -566,7 +545,6 @@ void GameRun(void) {
         if (activeVehicle == VEHICLE_JET) spinnerSpeed = PROPELLER_SPEED * 1.6f;
         propellerAngle += spinnerSpeed;
 
-        // CORRIGIDO: orientação do avião via quaternion (sem acumular Euler)
         if (yawInput != 0.0f) {
             Quaternion yawRot = QuaternionFromAxisAngle((Vector3){ 0, 1, 0 }, yawInput);
             airplaneOrientation = QuaternionMultiply(yawRot, airplaneOrientation);
@@ -604,14 +582,14 @@ void GameRun(void) {
             chaseOffset   = (Vector3){ 0.0f, 9.2f, 25.0f };
         }
 
-        // Câmara: fica ATRÁS do veículo (+Z local = parte de trás)
+        // camara atraz veiculo
         if (firstPersonMode) {
-            // Câmara no cockpit (ligeiramente atrás do centro)
+            // camara cockpit
             camera.position = Vector3Add(airplanePos,
                 Vector3Add(Vector3Scale(up, cockpitOffset.y), Vector3Scale(back, cockpitOffset.z)));
             camera.target = Vector3Add(camera.position, Vector3Scale(forward, 100.0f));
         } else {
-            // Câmara atrás e acima — offset +Z local (cauda do avião)
+            // camara chase
             camera.position = Vector3Add(airplanePos,
                 Vector3Add(Vector3Scale(up, chaseOffset.y), Vector3Scale(back, chaseOffset.z)));
             camera.target = Vector3Add(airplanePos, Vector3Scale(forward, 30.0f));
@@ -624,7 +602,7 @@ void GameRun(void) {
             smokeTimer = 0.0f;
             for (int i = 0; i < MAX_SMOKE; i++) {
                 if (!smokeArr[i].active) {
-                    // Fumo sai da cauda (+Z local = atrás)
+                    //Fumo sai da cauda
                     Vector3 tailLocal = (Vector3){ 0.0f, 0.0f, 3.5f };
                     if (activeVehicle == VEHICLE_HELICOPTER) {
                         tailLocal = (Vector3){ 0.0f, 0.4f, 5.2f };
@@ -649,9 +627,7 @@ void GameRun(void) {
             }
         }
 
-        // -------------------------------------------------------------------
-        // SISTEMA DE DISPARO / METRALHADORA (módulo de ataques)
-        // -------------------------------------------------------------------
+        //metrelhadora
         bool shooting = AttackUpdateMachineGun(dt,
                                                &spaceHeldTime, &machineGunActive,
                                                &machineGunFireTimer, &machineGunCooldown,
@@ -665,7 +641,7 @@ void GameRun(void) {
                            airplanePos, rotation, forward,
                            fxAlert);
 
-        // --- Bomba Nuclear (uma única vez) ---
+        // --- Bomba Nuclear ---
         AttackTrySpawnNuke(IsKeyPressed(KEY_F),
                            &nukeBomb,
                            airplanePos, forward,
@@ -674,13 +650,13 @@ void GameRun(void) {
 
         AttackUpdateBombInventory(dt, &bombCount, &bombRegenTimer);
 
-        // --- Física bomba + blast ---
+        // --- Fisica bomba + blast ---
         AttackUpdateBomb(dt, &bomb, buildings, &score, &scaredAlpha,
                          particles, &shockwave, &expFlash,
                          crazyColors, numCrazyColors,
                          fxKaboom);
 
-        // --- Física bomba nuclear ---
+        // --- Fisica bomba nuclear ---
         AttackUpdateNuke(dt,
                          &nukeBomb, buildings, &score,
                          nukeTrails, &nukeTrailTimer, &nukeAlertTimer,
@@ -690,14 +666,14 @@ void GameRun(void) {
                          particles, &shockwave, &expFlash,
                          fxNukeHit);
 
-        // --- Chuva de blocos pós-nuclear ---
+        // --- Chuva de blocos pos-nuclear ---
         bool rainEnded = AttackUpdateNukeRain(dt,
                                               &nukeRainActive,
                                               &nukeRainTimer, &nukeRainSpawnTimer,
                                               rainBlocks,
                                               airplanePos);
         if (nukeRainActive) {
-            // Enquanto a chuva está ativa, a música NK deve continuar sempre.
+            //nk music enquanto chove
             StopMusicStream(musicBackground);
             StopMusicStream(musicKirk);
             StopMusicStream(musicDima);
@@ -721,7 +697,7 @@ void GameRun(void) {
 
         colorCycleTimer += dt * 0.5f;
 
-        // --- Loop nuvens (mundo infinito, tal como os edifícios) ---
+        // --- Loop nuvens (mundo infinito) ---
         for (int i = 0; i < MAX_CLOUDS; i++) {
             float cdx = airplanePos.x - clouds[i].position.x;
             float cdz = airplanePos.z - clouds[i].position.z;
@@ -732,7 +708,7 @@ void GameRun(void) {
             if (cdz < -WORLD_HALF_SIZE) clouds[i].position.z -= WORLD_HALF_SIZE * 2.0f;
         }
 
-        // --- Loop edifícios ---
+        // --- Loop edificios ---
         float tallestBuildingY = CLOUD_MIN_Y;
         for (int i = 0; i < MAX_BUILDINGS; i++) {
             float dx = airplanePos.x - buildings[i].position.x;
@@ -765,7 +741,7 @@ void GameRun(void) {
                     buildings[i].size.y    += hGrow;
                     buildings[i].position.y = buildings[i].size.y / 2.0f;
 
-                    // Largura cresce até limite e sem sobrepor
+                    // Largura cresce ate limite e sem sobrepor
                     Vector3 targetSize = buildings[i].size;
                     if (targetSize.x < maxW) targetSize.x = fminf(targetSize.x + wGrow, maxW);
                     if (targetSize.z < maxW) targetSize.z = fminf(targetSize.z + wGrow, maxW);
@@ -775,7 +751,7 @@ void GameRun(void) {
                         buildings[i].size.x = targetSize.x;
                         buildings[i].size.z = targetSize.z;
                     } else {
-                        // Se não der juntos, tenta eixo a eixo para ficar "colado" sem atravessar
+                        // Se nao der juntos, tenta eixo a eixo para ficar "colado" sem atravessar
                         Vector3 onlyX = buildings[i].size;
                         onlyX.x = targetSize.x;
                         if (!OverlapsAnyBuilding(buildings[i].position, onlyX, buildings, i))
@@ -797,12 +773,12 @@ void GameRun(void) {
                 };
 
                 if (activeVehicle == VEHICLE_UFO) {
-                    // UFO atira em 12 direções horizontais
+                    // UFO atira em 12 direçoes horizontais
                     for (int dir = 0; dir < 12; dir++) {
                         float angle = (dir / 12.0f) * 6.28f;
                         Vector3 laserDir = {
                             cosf(angle),
-                            0.0f,  // Mantém horizontal
+                            0.0f,  // Mantem horizontal
                             sinf(angle)
                         };
                         laserDir = Vector3Normalize(laserDir);
@@ -841,8 +817,8 @@ void GameRun(void) {
             }
         }
 
-        // --- Altura dinâmica das nuvens (acompanha crescimento dos edifícios) ---
-        // Quando os edifícios ficam muito altos, a camada de nuvens sobe gradualmente.
+        // --- Altura dinamica das nuvens (acompanha crescimento dos edifícios) ---
+        // Quando os edificios ficam muito altos, a camada de nuvens sobe gradualmente
         float cloudLift = fmaxf(0.0f, tallestBuildingY - 120.0f);
         float targetCloudMinY = CLOUD_MIN_Y + cloudLift;
         float targetCloudMaxY = CLOUD_MAX_Y + cloudLift;
@@ -860,15 +836,15 @@ void GameRun(void) {
             }
         }
 
-        // --- Física do rasto da bomba nuclear ---
+        // --- Fisica do rasto da bomba nuclear ---
         AttackUpdateNukeTrails(dt, nukeTrails);
 
-        // --- Física partículas ---
+        // --- Fisica particulas ---
         for (int i = 0; i < MAX_PARTICLES; i++) {
             if (particles[i].active) {
                 particles[i].position = Vector3Add(particles[i].position, particles[i].velocity);
 
-                // Destroços caem mais devagar; faíscas e bolas de fogo caem normal
+                // Destroços caem mais devagar; faiscas e bolas de fogo caem normal
                 float grav = particles[i].isDebris ? 3.5f : 8.0f;
                 particles[i].velocity.y -= grav * dt;
 
@@ -895,7 +871,7 @@ void GameRun(void) {
             if (expFlash.lifetime <= 0) expFlash.active = false;
         }
 
-        // --- Eventos especiais (pontuação/imagens/músicas) ---
+        // --- Eventos especiais (pontuaçao/imagens/musicas) ---
         UpdateSpecialScoreEvents(score,
                                  &lastKirkScore,
                                  &lastDimaScore,
@@ -918,9 +894,7 @@ void GameRun(void) {
                            &spFadeAlpha,
                            &nukeCoverAlpha);
 
-        // =====================================================================
-        // RENDERIZAÇÃO
-        // =====================================================================
+        //renderiza cena 3D
         BeginDrawing();
             ClearBackground((Color){ 255, 100, 200, 255 });
 
@@ -955,7 +929,7 @@ void GameRun(void) {
                     }
                 }
 
-                // Partículas de explosão
+                // Particulas de explosão
                 for (int i = 0; i < MAX_PARTICLES; i++) {
                     if (particles[i].active) {
                         float lr = particles[i].lifetime / particles[i].maxLifetime;
@@ -968,14 +942,14 @@ void GameRun(void) {
                             c.a = (unsigned char)(lr * 220);
                             DrawSphere(particles[i].position, sz, c);
                         } else if (particles[i].isDebris) {
-                            // Destroços: cubos que mantêm tamanho mas ficam mais escuros
+                            // Destroços: cubos que mantem tamanho mas ficam mais escuros
                             DrawCube(particles[i].position,
                                      particles[i].size,
                                      particles[i].size,
                                      particles[i].size,
                                      particles[i].color);
                         } else {
-                            // Faíscas: cubos pequenos que encolhem e ficam transparentes
+                            // Faiscas: cubos pequenos que encolhem e ficam transparentes
                             float sz = particles[i].size * lr;
                             if (sz < 0.05f) sz = 0.05f;
                             Color c = particles[i].color;
@@ -1039,10 +1013,7 @@ void GameRun(void) {
 
                 if (bomb.active) DrawSphere(bomb.position, 1.5f, DARKGRAY);
 
-                // -----------------------------------------------------------
-                // VEÍCULO DO JOGADOR
-                // O modelo é desenhado no espaço local com frente para -Z
-                // -----------------------------------------------------------
+                //veiculo do jogador
                 if (!firstPersonMode) {
                     rlPushMatrix();
                         rlTranslatef(airplanePos.x, airplanePos.y, airplanePos.z);
@@ -1052,15 +1023,15 @@ void GameRun(void) {
                     rlPopMatrix();
                 }
 
-                // Lasers dos canhões
+                // Lasers dos canhoes
                 if (shooting) {
                     if (activeVehicle == VEHICLE_UFO) {
-                        // UFO dispara em 12 direções horizontais em círculo
+                        // UFO dispara em 12 direções horizontais em circulo
                         for (int dir = 0; dir < 12; dir++) {
                             float angle = (dir / 12.0f) * 6.28f;  // 0 a 360 graus
                             Vector3 laserDir = {
                                 cosf(angle),
-                                0.0f,  // Mantém horizontal
+                                0.0f,  // Mantim horizontal
                                 sinf(angle)
                             };
                             laserDir = Vector3Normalize(laserDir);
@@ -1070,7 +1041,7 @@ void GameRun(void) {
                                            LASER_RADIUS, LASER_RADIUS, 4, LIME);
                         }
                     } else {
-                        // Aviões/Helicóptero/Jet disparam para a frente
+                        // Avioes/Helicoptero/Jet disparam para a frente
                         Vector3 gunRLocal = (Vector3){ 2.5f, -0.05f, 0.0f };
                         Vector3 gunLLocal = (Vector3){ -2.5f, -0.05f, 0.0f };
                         if (activeVehicle == VEHICLE_HELICOPTER) {

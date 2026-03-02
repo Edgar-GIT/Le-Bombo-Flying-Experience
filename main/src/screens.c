@@ -1,8 +1,8 @@
 #include "screens.h"
 
-// =====================================================================
-// FUNÇÃO: Gestão de eventos de score + músicas/imagens especiais
-// =====================================================================
+
+//gestao de eventos de score + musicas/imagens especiais
+
 void UpdateSpecialScoreEvents(int score,
                               int* lastKirkScore,
                               int* lastDimaScore,
@@ -60,9 +60,8 @@ void UpdateSpecialScoreEvents(int score,
     }
 }
 
-// =====================================================================
-// FUNÇÃO: Fade-out das imagens de overlay
-// =====================================================================
+//animaçao fade out imagens
+
 void UpdateOverlayFades(float* laserAlpha,
                         float* scaredAlpha,
                         float* kirkAlpha,

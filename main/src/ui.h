@@ -3,13 +3,13 @@
 
 #include "config.h"
 
-// Resultados de interação no menu principal
+//resultados de interaçao no menu principal
 typedef struct {
     bool leave;
     bool play;
 } MainMenuResult;
 
-// Resultados de interação no menu de seleção
+//resultados de interaçao no menu de seleçao
 typedef struct {
     bool requestPrev;
     bool requestNext;

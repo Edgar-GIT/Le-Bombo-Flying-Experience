@@ -7,12 +7,8 @@
 #include <math.h>
 #include <string.h>
 
-// =====================================================================
-// CONSTANTES CONFIGURÁVEIS - Mexe aqui à vontade!
-// =====================================================================
-
 // --- JANELA ---
-#define GAME_WINDOW_TITLE "My bombo flight simulator - THE REAL ONE"
+#define GAME_WINDOW_TITLE "Le bombo flight simulator"
 
 // --- MUNDO ---
 #define MAX_BUILDINGS          250
@@ -101,9 +97,8 @@
 // --- HUD ---
 #define BLINK_SPEED              4.0f
 
-// =====================================================================
-// FICHEIROS DE RECURSOS
-// =====================================================================
+// --- RECURSOS ---
+
 #define ASSET_MUSIC_DIR   "music/"
 #define ASSET_IMG_DIR     "img/"
 
@@ -131,9 +126,7 @@
 #define IMG_MENU        ASSET_IMG_DIR "menu.png"
 #define IMG_SP          ASSET_IMG_DIR "sp.png"
 
-// =====================================================================
-// ESTRUTURAS DE DADOS
-// =====================================================================
+// --- STRUCTS DADOS ---
 
 typedef struct {
     Vector3 position;
