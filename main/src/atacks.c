@@ -314,6 +314,15 @@ void AttackUpdateNuke(float dt,
     *lastKirkScore = *score;
     *lastDimaScore = *score;
 
+    //limpa particulas antigas para evitar piroclastos dos buildings durante nuke
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        particles[i].active = false;
+    }
+    //limpa rasto antigo do missil
+    for (int i = 0; i < MAX_NUKE_TRAILS; i++) {
+        nukeTrails[i].active = false;
+    }
+
     SpawnNukeExplosion(nukeBomb->position, particles);
     for (int i = 0; i < MAX_BUILDINGS; i++) {
         if (buildings[i].active) {

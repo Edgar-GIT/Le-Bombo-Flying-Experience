@@ -681,6 +681,12 @@ void GameRun(void) {
             worldWipedByNuke = false;
             StopMusicStream(musicNk);
             nkAlpha = 0.0f;
+            //limpa carga extra para voltar suave ao jogo normal
+            for (int i = 0; i < MAX_NUKE_RAIN_BLOCKS; i++) rainBlocks[i].active = false;
+            for (int i = 0; i < MAX_PARTICLES; i++) particles[i].active = false;
+            for (int i = 0; i < MAX_SMOKE; i++) smokeArr[i].active = false;
+            for (int i = 0; i < MAX_NUKE_TRAILS; i++) nukeTrails[i].active = false;
+            bomb.active = false;
             for (int i = 0; i < MAX_BUILDINGS; i++) {
                 if (!buildings[i].active) {
                     InitBuilding(&buildings[i], buildings, i, crazyColors, numCrazyColors);
