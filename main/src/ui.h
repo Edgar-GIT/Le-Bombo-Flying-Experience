@@ -27,12 +27,14 @@ VehicleMenuResult UIDrawVehicleMenuUI(float t, float uiOffsetY,
                                       bool menuSliding);
 void UIDrawLoseScreen(Texture2D imgLose, bool blinkOn);
 
-void UIDrawGameplayOverlays(Texture2D imgBomb, Texture2D imgScared,
-                            Texture2D imgKirk, Texture2D imgDima,
+void UIDrawGameplayOverlays(Texture2D imgBomb, Texture2D imgGoldenHit,
+                            Texture2D imgScared, Texture2D imgKirk,
+                            Texture2D imgDima, Texture2D img3p, Texture2D imgChicken,
                             Texture2D imgNk, Texture2D imgMachine,
                             Texture2D imgSp,
-                            float laserAlpha, float scaredAlpha,
-                            float kirkAlpha, float dimaAlpha,
+                            float laserAlpha, float goldenHitAlpha,
+                            float scaredAlpha, float kirkAlpha,
+                            float dimaAlpha, float epAlpha, float chickenAlpha,
                             float nkAlpha, float machineAlpha,
                             float spFadeAlpha, float nukeCoverAlpha);
 

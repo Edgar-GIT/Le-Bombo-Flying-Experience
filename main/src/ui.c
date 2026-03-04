@@ -173,18 +173,24 @@ void UIDrawLoseScreen(Texture2D imgLose, bool blinkOn) {
 
 //overlays imagem gameplay
 
-void UIDrawGameplayOverlays(Texture2D imgBomb, Texture2D imgScared,
-                            Texture2D imgKirk, Texture2D imgDima,
+void UIDrawGameplayOverlays(Texture2D imgBomb, Texture2D imgGoldenHit,
+                            Texture2D imgScared, Texture2D imgKirk,
+                            Texture2D imgDima, Texture2D img3p, Texture2D imgChicken,
                             Texture2D imgNk, Texture2D imgMachine,
                             Texture2D imgSp,
-                            float laserAlpha, float scaredAlpha,
-                            float kirkAlpha, float dimaAlpha,
+                            float laserAlpha, float goldenHitAlpha,
+                            float scaredAlpha, float kirkAlpha,
+                            float dimaAlpha, float epAlpha, float chickenAlpha,
                             float nkAlpha, float machineAlpha,
                             float spFadeAlpha, float nukeCoverAlpha) {
     if (laserAlpha   > 0) DrawTexturePro(imgBomb,
         (Rectangle){0,0,(float)imgBomb.width,(float)imgBomb.height},
         (Rectangle){0,0,(float)GetScreenWidth(),(float)GetScreenHeight()},
         (Vector2){0,0},0,Fade(WHITE,laserAlpha));
+    if (goldenHitAlpha > 0) DrawTexturePro(imgGoldenHit,
+        (Rectangle){0,0,(float)imgGoldenHit.width,(float)imgGoldenHit.height},
+        (Rectangle){0,0,(float)GetScreenWidth(),(float)GetScreenHeight()},
+        (Vector2){0,0},0,Fade(WHITE,goldenHitAlpha));
     if (scaredAlpha  > 0) DrawTexturePro(imgScared,
         (Rectangle){0,0,(float)imgScared.width,(float)imgScared.height},
         (Rectangle){0,0,(float)GetScreenWidth(),(float)GetScreenHeight()},
@@ -197,6 +203,14 @@ void UIDrawGameplayOverlays(Texture2D imgBomb, Texture2D imgScared,
         (Rectangle){0,0,(float)imgDima.width,(float)imgDima.height},
         (Rectangle){0,0,(float)GetScreenWidth(),(float)GetScreenHeight()},
         (Vector2){0,0},0,Fade(WHITE,dimaAlpha));
+    if (epAlpha      > 0) DrawTexturePro(img3p,
+        (Rectangle){0,0,(float)img3p.width,(float)img3p.height},
+        (Rectangle){0,0,(float)GetScreenWidth(),(float)GetScreenHeight()},
+        (Vector2){0,0},0,Fade(WHITE,epAlpha));
+    if (chickenAlpha > 0) DrawTexturePro(imgChicken,
+        (Rectangle){0,0,(float)imgChicken.width,(float)imgChicken.height},
+        (Rectangle){0,0,(float)GetScreenWidth(),(float)GetScreenHeight()},
+        (Vector2){0,0},0,Fade(WHITE,chickenAlpha));
     if (nkAlpha      > 0) DrawTexturePro(imgNk,
         (Rectangle){0,0,(float)imgNk.width,(float)imgNk.height},
         (Rectangle){0,0,(float)GetScreenWidth(),(float)GetScreenHeight()},

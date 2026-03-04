@@ -85,6 +85,8 @@
 // --- EVENTOS ESPECIAIS ---
 #define KIRK_SCORE_INTERVAL     20000
 #define DIMA_SCORE_INTERVAL     40000
+#define EP_SCORE_INTERVAL       60000
+#define CHICKEN_SCORE_INTERVAL  80000
 #define NK_SCORE_INTERVAL    1000000
 #define KIRK_FADE_SPEED          0.015f
 #define NK_FADE_SPEED            0.012f
@@ -104,12 +106,15 @@
 #define SFX_MACHINE     ASSET_MUSIC_DIR "met.mp3"
 #define SFX_ALERT       ASSET_MUSIC_DIR "alert.mp3"
 #define SFX_KABOOM      ASSET_MUSIC_DIR "kaboom.mp3"
-#define SFX_HA          ASSET_MUSIC_DIR "ha.mp3"
-#define SFX_FAIL        ASSET_MUSIC_DIR "fail.mp3"
+#define SFX_HA          ASSET_MUSIC_DIR "fail.mp3"
+#define SFX_FAIL        ASSET_MUSIC_DIR "ha.mp3"
 #define SFX_NUKE_HIT    ASSET_MUSIC_DIR "67.mp3"
+#define SFX_GOLDEN_HIT  ASSET_MUSIC_DIR "672.mp3"
 #define MUS_BACKGROUND  ASSET_MUSIC_DIR "linga.mp3"
 #define MUS_KIRK        ASSET_MUSIC_DIR "kirk.mp3"
 #define MUS_DIMA        ASSET_MUSIC_DIR "dima.mp3"
+#define MUS_EP          ASSET_MUSIC_DIR "ep.mp3"
+#define MUS_CHICKEN     ASSET_MUSIC_DIR "chicken.mp3"
 #define MUS_NK          ASSET_MUSIC_DIR "nk.mp3"
 #define MUS_MENU        ASSET_MUSIC_DIR "cat.mp3"
 
@@ -117,7 +122,10 @@
 #define IMG_SCARED      ASSET_IMG_DIR "scared.png"
 #define IMG_KIRK        ASSET_IMG_DIR "kirk.png"
 #define IMG_DIMA        ASSET_IMG_DIR "dima.png"
+#define IMG_3P          ASSET_IMG_DIR "3p.png"
+#define IMG_CHICKEN     ASSET_IMG_DIR "chicken.png"
 #define IMG_NK          ASSET_IMG_DIR "nk.png"
+#define IMG_GOLDEN_HIT  ASSET_IMG_DIR "67.png"
 #define IMG_LOSE        ASSET_IMG_DIR "lose.png"
 #define IMG_MACHINE     ASSET_IMG_DIR "machine.png"
 #define IMG_MENU        ASSET_IMG_DIR "menu.png"

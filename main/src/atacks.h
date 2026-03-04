@@ -34,10 +34,10 @@ void AttackUpdateBomb(float dt,
 void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
                                    Vector3 airplanePos, Vector3 forward,
                                    Building* building,
-                                   int* score, float* laserAlpha,
+                                   int* score, float* laserAlpha, float* goldenHitAlpha,
                                    Particle* particles,
                                    Color* crazyColors, int numColors,
-                                   Sound fxExplode);
+                                   Sound fxExplode, Sound fxGoldenHit);
 
 void AttackUpdateNuke(float dt,
                       NukeBomb* nukeBomb, Building* buildings, int* score,

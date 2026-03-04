@@ -218,18 +218,25 @@ void GameRun(void) {
     Sound fxHa       = LoadSound(SFX_HA);
     Sound fxFail     = LoadSound(SFX_FAIL);
     Sound fxNukeHit  = LoadSound(SFX_NUKE_HIT);
+    Sound fxGoldenHit = LoadSound(SFX_GOLDEN_HIT);
 
     Music musicBackground = LoadMusicStream(MUS_BACKGROUND);
     Music musicKirk       = LoadMusicStream(MUS_KIRK);
     Music musicDima       = LoadMusicStream(MUS_DIMA);
+    Music musicEp         = LoadMusicStream(MUS_EP);
+    Music musicChicken    = LoadMusicStream(MUS_CHICKEN);
     Music musicNk         = LoadMusicStream(MUS_NK);
     Music musicMenu       = LoadMusicStream(MUS_MENU);
+    musicChicken.looping  = false;
     musicNk.looping       = false;
 
     Texture2D imgBomb    = LoadTexture(IMG_BOMB);
+    Texture2D imgGoldenHit = LoadTexture(IMG_GOLDEN_HIT);
     Texture2D imgScared  = LoadTexture(IMG_SCARED);
     Texture2D imgKirk    = LoadTexture(IMG_KIRK);
     Texture2D imgDima    = LoadTexture(IMG_DIMA);
+    Texture2D img3p      = LoadTexture(IMG_3P);
+    Texture2D imgChicken = LoadTexture(IMG_CHICKEN);
     Texture2D imgNk      = LoadTexture(IMG_NK);
     Texture2D imgLose    = LoadTexture(IMG_LOSE);
     Texture2D imgMachine = LoadTexture(IMG_MACHINE);
@@ -259,12 +266,17 @@ void GameRun(void) {
     int   score         = 0;
     int   lastKirkScore = 0;
     int   lastDimaScore = 0;
+    int   lastEpScore   = 0;
+    int   lastChickenScore = 0;
     int   lastNkScore   = 0;
 
     float laserAlpha    = 0.0f;
+    float goldenHitAlpha = 0.0f;
     float scaredAlpha   = 0.0f;
     float kirkAlpha     = 0.0f;
     float dimaAlpha     = 0.0f;
+    float epAlpha       = 0.0f;
+    float chickenAlpha  = 0.0f;
     float nkAlpha       = 0.0f;
     float machineAlpha  = 0.0f;  
     float spFadeAlpha   = 0.0f;  
@@ -419,9 +431,9 @@ void GameRun(void) {
                     if (menuAction.play) {
                         //start com veiculo escolhido
                         activeVehicle = previewVehicle;
-                        score = 0; lastKirkScore = 0; lastDimaScore = 0; lastNkScore = 0;
+                        score = 0; lastKirkScore = 0; lastDimaScore = 0; lastEpScore = 0; lastChickenScore = 0; lastNkScore = 0;
                         bombCount = MAX_BOMBS; bombRegenTimer = 0.0f;
-                        laserAlpha = scaredAlpha = kirkAlpha = dimaAlpha = nkAlpha = machineAlpha = 0.0f;
+                        laserAlpha = goldenHitAlpha = scaredAlpha = kirkAlpha = dimaAlpha = epAlpha = chickenAlpha = nkAlpha = machineAlpha = 0.0f;
                         spFadeAlpha = nukeCoverAlpha = 0.0f;
                         nukeTrailTimer = 0.0f; nukeAlertTimer = 0.0f;
                         nukeRainTimer = 0.0f; nukeRainSpawnTimer = 0.0f;
@@ -450,9 +462,12 @@ void GameRun(void) {
 
                         StopSound(fxFail);
                         StopSound(fxNukeHit);
+                        StopSound(fxGoldenHit);
                         StopMusicStream(musicMenu);
                         StopMusicStream(musicKirk);
                         StopMusicStream(musicDima);
+                        StopMusicStream(musicEp);
+                        StopMusicStream(musicChicken);
                         StopMusicStream(musicNk);
                         SeekMusicStream(musicBackground, 0.0f);
                         PlayMusicStream(musicBackground);
@@ -474,25 +489,31 @@ void GameRun(void) {
                 menuSlideT = 1.0f;
                 previewVehicle = activeVehicle;
                 nextPreviewVehicle = previewVehicle;
+                epAlpha = 0.0f;
+                chickenAlpha = 0.0f;
                 nkAlpha = 0.0f;
+                goldenHitAlpha = 0.0f;
                 spFadeAlpha = nukeCoverAlpha = 0.0f;
                 nukeBomb.active = false;
                 nukeBomb.waitingImpactSound = false;
                 nukeRainActive = false;
                 StopSound(fxFail);
                 StopSound(fxNukeHit);
+                StopSound(fxGoldenHit);
                 StopMusicStream(musicBackground);
                 StopMusicStream(musicKirk);
                 StopMusicStream(musicDima);
+                StopMusicStream(musicEp);
+                StopMusicStream(musicChicken);
                 StopMusicStream(musicNk);
                 SeekMusicStream(musicMenu, 0.0f);
                 PlayMusicStream(musicMenu);
                 screenState = SCREEN_MENU_MAIN;
             }
             if (IsKeyPressed(KEY_R)) {
-                score = 0; lastKirkScore = 0; lastDimaScore = 0; lastNkScore = 0;
+                score = 0; lastKirkScore = 0; lastDimaScore = 0; lastEpScore = 0; lastChickenScore = 0; lastNkScore = 0;
                 bombCount = MAX_BOMBS; bombRegenTimer = 0.0f;
-                laserAlpha = scaredAlpha = kirkAlpha = dimaAlpha = nkAlpha = machineAlpha = 0.0f;
+                laserAlpha = goldenHitAlpha = scaredAlpha = kirkAlpha = dimaAlpha = epAlpha = chickenAlpha = nkAlpha = machineAlpha = 0.0f;
                 spFadeAlpha = nukeCoverAlpha = 0.0f;
                 nukeTrailTimer = 0.0f; nukeAlertTimer = 0.0f;
                 nukeRainTimer = 0.0f; nukeRainSpawnTimer = 0.0f;
@@ -517,7 +538,10 @@ void GameRun(void) {
                 cloudLayerMaxY = CLOUD_MAX_Y;
                 StopSound(fxFail);
                 StopSound(fxNukeHit);
+                StopSound(fxGoldenHit);
                 StopMusicStream(musicKirk); StopMusicStream(musicDima);
+                StopMusicStream(musicEp);
+                StopMusicStream(musicChicken);
                 StopMusicStream(musicNk);
                 SeekMusicStream(musicBackground, 0.0f);
                 PlayMusicStream(musicBackground);
@@ -528,6 +552,8 @@ void GameRun(void) {
         UpdateMusicStream(musicBackground);
         UpdateMusicStream(musicKirk);
         UpdateMusicStream(musicDima);
+        UpdateMusicStream(musicEp);
+        UpdateMusicStream(musicChicken);
         UpdateMusicStream(musicNk);
 
         if (IsKeyPressed(KEY_M)) {
@@ -535,16 +561,22 @@ void GameRun(void) {
             menuSlideT = 1.0f;
             previewVehicle = activeVehicle;
             nextPreviewVehicle = previewVehicle;
+            epAlpha = 0.0f;
+            chickenAlpha = 0.0f;
             nkAlpha = 0.0f;
+            goldenHitAlpha = 0.0f;
             spFadeAlpha = nukeCoverAlpha = 0.0f;
             nukeBomb.active = false;
             nukeBomb.waitingImpactSound = false;
             nukeRainActive = false;
             StopSound(fxFail);
             StopSound(fxNukeHit);
+            StopSound(fxGoldenHit);
             StopMusicStream(musicBackground);
             StopMusicStream(musicKirk);
             StopMusicStream(musicDima);
+            StopMusicStream(musicEp);
+            StopMusicStream(musicChicken);
             StopMusicStream(musicNk);
             SeekMusicStream(musicMenu, 0.0f);
             PlayMusicStream(musicMenu);
@@ -707,6 +739,8 @@ void GameRun(void) {
             StopMusicStream(musicBackground);
             StopMusicStream(musicKirk);
             StopMusicStream(musicDima);
+            StopMusicStream(musicEp);
+            StopMusicStream(musicChicken);
             if (!IsMusicStreamPlaying(musicNk)) {
                 SeekMusicStream(musicNk, 0.0f);
                 PlayMusicStream(musicNk);
@@ -821,10 +855,10 @@ void GameRun(void) {
                         AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                       airplanePos, laserDir,
                                                       &buildings[i],
-                                                      &score, &laserAlpha,
+                                                      &score, &laserAlpha, &goldenHitAlpha,
                                                       particles,
                                                       crazyColors, numCrazyColors,
-                                                      fxExplode);
+                                                      fxExplode, fxGoldenHit);
                     }
                 } else if (activeVehicle == VEHICLE_DRONE) {
                     Vector3 droneFrontPos = Vector3Add(airplanePos, Vector3Scale(forward, 2.8f));
@@ -832,33 +866,36 @@ void GameRun(void) {
                     AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                   droneFrontPos, forward,
                                                   &buildings[i],
-                                                  &score, &laserAlpha,
+                                                  &score, &laserAlpha, &goldenHitAlpha,
                                                   particles,
                                                   crazyColors, numCrazyColors,
-                                                  fxExplode);
+                                                  fxExplode, fxGoldenHit);
                     AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                   droneBackPos, back,
                                                   &buildings[i],
-                                                  &score, &laserAlpha,
+                                                  &score, &laserAlpha, &goldenHitAlpha,
                                                   particles,
                                                   crazyColors, numCrazyColors,
-                                                  fxExplode);
+                                                  fxExplode, fxGoldenHit);
                 } else {
                     AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                   airplanePos, forward,
                                                   &buildings[i],
-                                                  &score, &laserAlpha,
+                                                  &score, &laserAlpha, &goldenHitAlpha,
                                                   particles,
                                                   crazyColors, numCrazyColors,
-                                                  fxExplode);
+                                                  fxExplode, fxGoldenHit);
                 }
 
                 if (CheckCollisionBoxSphere(bBox, airplanePos, 3.5f)) {
                     StopMusicStream(musicBackground); StopMusicStream(musicKirk);
                     StopMusicStream(musicDima);
+                    StopMusicStream(musicEp);
+                    StopMusicStream(musicChicken);
                     StopMusicStream(musicNk);
                     StopSound(fxAlert); StopSound(fxKaboom); StopSound(fxMachine);
                     StopSound(fxFail);  StopSound(fxNukeHit);
+                    StopSound(fxGoldenHit);
                     PlaySound(fxHa);
                     gameOver = true;
                 }
@@ -916,20 +953,29 @@ void GameRun(void) {
         UpdateSpecialScoreEvents(score,
                                  &lastKirkScore,
                                  &lastDimaScore,
+                                 &lastEpScore,
+                                 &lastChickenScore,
                                  &lastNkScore,
                                  &kirkAlpha,
                                  &dimaAlpha,
+                                 &epAlpha,
+                                 &chickenAlpha,
                                  &nkAlpha,
                                  &musicBackground,
                                  &musicKirk,
                                  &musicDima,
+                                 &musicEp,
+                                 &musicChicken,
                                  &musicNk);
 
         // --- Fades dos overlays ---
         UpdateOverlayFades(&laserAlpha,
+                           &goldenHitAlpha,
                            &scaredAlpha,
                            &kirkAlpha,
                            &dimaAlpha,
+                           &epAlpha,
+                           &chickenAlpha,
                            &nkAlpha,
                            &machineAlpha,
                            &spFadeAlpha,
@@ -1097,9 +1143,9 @@ void GameRun(void) {
 
             EndMode3D();
 
-            UIDrawGameplayOverlays(imgBomb, imgScared, imgKirk, imgDima, imgNk,
+            UIDrawGameplayOverlays(imgBomb, imgGoldenHit, imgScared, imgKirk, imgDima, img3p, imgChicken, imgNk,
                                    imgMachine, imgSp,
-                                   laserAlpha, scaredAlpha, kirkAlpha, dimaAlpha,
+                                   laserAlpha, goldenHitAlpha, scaredAlpha, kirkAlpha, dimaAlpha, epAlpha, chickenAlpha,
                                    nkAlpha, machineAlpha, spFadeAlpha, nukeCoverAlpha);
 
             UIDrawGameplayHUD(score, blinkOn,
@@ -1116,14 +1162,16 @@ void GameRun(void) {
 
     UnloadSound(fxExplode); UnloadSound(fxShoot); UnloadSound(fxMachine);
     UnloadSound(fxAlert);   UnloadSound(fxKaboom); UnloadSound(fxHa);
-    UnloadSound(fxFail);    UnloadSound(fxNukeHit);
+    UnloadSound(fxFail);    UnloadSound(fxNukeHit); UnloadSound(fxGoldenHit);
     UnloadMusicStream(musicBackground);
     UnloadMusicStream(musicKirk);
     UnloadMusicStream(musicDima);
+    UnloadMusicStream(musicEp);
+    UnloadMusicStream(musicChicken);
     UnloadMusicStream(musicNk);
     UnloadMusicStream(musicMenu);
-    UnloadTexture(imgBomb);    UnloadTexture(imgScared);
-    UnloadTexture(imgKirk);    UnloadTexture(imgDima);    UnloadTexture(imgNk);
+    UnloadTexture(imgBomb);    UnloadTexture(imgGoldenHit); UnloadTexture(imgScared);
+    UnloadTexture(imgKirk);    UnloadTexture(imgDima);    UnloadTexture(img3p); UnloadTexture(imgChicken); UnloadTexture(imgNk);
     UnloadTexture(imgLose);    UnloadTexture(imgMachine);
     UnloadTexture(imgMenu);    UnloadTexture(imgSp);
 }
