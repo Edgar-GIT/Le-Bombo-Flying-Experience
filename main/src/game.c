@@ -185,10 +185,10 @@ static void DrawVehicleLaserBeam(Vector3 start, Vector3 end, VehicleType vehicle
     if (vehicle == VEHICLE_DRONE) {
         //drone: tiro branco com outline preto
         DrawCylinderEx(start, end,
-                       LASER_RADIUS * 1.55f, LASER_RADIUS * 1.55f,
+                       LASER_RADIUS * 0.58f, LASER_RADIUS * 0.58f,
                        6, BLACK);
         DrawCylinderEx(start, end,
-                       LASER_RADIUS * 0.78f, LASER_RADIUS * 0.78f,
+                       LASER_RADIUS * 0.36f, LASER_RADIUS * 0.36f,
                        6, RAYWHITE);
         return;
     }
@@ -372,8 +372,8 @@ void GameRun(void) {
                             float nextX = menuSlideDir * (1.0f - ease) * slideDist;
                             float currentY = 2.6f;
                             float nextY = 2.6f;
-                            if (previewVehicle == VEHICLE_UFO) currentY -= 0.6f;
-                            if (nextPreviewVehicle == VEHICLE_UFO) nextY -= 0.6f;
+                            if (previewVehicle == VEHICLE_UFO) currentY -= 0.8f;
+                            if (nextPreviewVehicle == VEHICLE_UFO) nextY -= 0.8f;
 
                             rlPushMatrix();
                                 rlTranslatef(currentX, currentY, 0);
@@ -388,7 +388,7 @@ void GameRun(void) {
                             rlPopMatrix();
                         } else {
                             float currentY = 2.6f;
-                            if (previewVehicle == VEHICLE_UFO) currentY -= 0.6f;
+                            if (previewVehicle == VEHICLE_UFO) currentY -= 0.8f;
                             rlPushMatrix();
                                 rlTranslatef(0, currentY, 0);
                                 rlRotatef(165.0f + sinf(t * 0.7f) * 8.0f, 0, 1, 0);
@@ -1058,10 +1058,10 @@ void GameRun(void) {
                             DrawVehicleLaserBeam(laserStart, laserEnd, activeVehicle);
                         }
                     } else if (activeVehicle == VEHICLE_DRONE) {
-                        Vector3 gunFRLocal = (Vector3){ 0.72f, -0.04f, -3.10f };
-                        Vector3 gunFLLocal = (Vector3){ -0.72f, -0.04f, -3.10f };
-                        Vector3 gunBRLocal = (Vector3){ 0.72f, -0.04f, 3.10f };
-                        Vector3 gunBLLocal = (Vector3){ -0.72f, -0.04f, 3.10f };
+                        Vector3 gunFRLocal = (Vector3){ 1.02f, -0.04f, -3.10f };
+                        Vector3 gunFLLocal = (Vector3){ -1.02f, -0.04f, -3.10f };
+                        Vector3 gunBRLocal = (Vector3){ 1.02f, -0.04f, 3.10f };
+                        Vector3 gunBLLocal = (Vector3){ -1.02f, -0.04f, 3.10f };
                         Vector3 wFR = Vector3Transform(gunFRLocal, rotation);
                         Vector3 wFL = Vector3Transform(gunFLLocal, rotation);
                         Vector3 wBR = Vector3Transform(gunBRLocal, rotation);

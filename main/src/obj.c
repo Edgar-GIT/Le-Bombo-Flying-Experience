@@ -348,13 +348,13 @@ void DrawDroneModel(float rotorAngle){
     }
 
     // canhoes frente/tras para o ataque duplo
-    DrawCylinderEx((Vector3){ 0.72f, -0.04f, -3.10f }, (Vector3){ 0.72f, -0.04f, -4.15f },
+    DrawCylinderEx((Vector3){ 1.02f, -0.04f, -3.10f }, (Vector3){ 1.02f, -0.04f, -4.15f },
                    0.08f, 0.06f, 8, outline);
-    DrawCylinderEx((Vector3){-0.72f, -0.04f, -3.10f }, (Vector3){-0.72f, -0.04f, -4.15f },
+    DrawCylinderEx((Vector3){-1.02f, -0.04f, -3.10f }, (Vector3){-1.02f, -0.04f, -4.15f },
                    0.08f, 0.06f, 8, outline);
-    DrawCylinderEx((Vector3){ 0.72f, -0.04f,  3.10f }, (Vector3){ 0.72f, -0.04f,  4.15f },
+    DrawCylinderEx((Vector3){ 1.02f, -0.04f,  3.10f }, (Vector3){ 1.02f, -0.04f,  4.15f },
                    0.08f, 0.06f, 8, outline);
-    DrawCylinderEx((Vector3){-0.72f, -0.04f,  3.10f }, (Vector3){-0.72f, -0.04f,  4.15f },
+    DrawCylinderEx((Vector3){-1.02f, -0.04f,  3.10f }, (Vector3){-1.02f, -0.04f,  4.15f },
                    0.08f, 0.06f, 8, outline);
 }
 
