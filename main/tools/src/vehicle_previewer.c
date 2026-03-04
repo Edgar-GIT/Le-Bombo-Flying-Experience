@@ -69,7 +69,9 @@ int main(void) {
                 DrawGrid(40, 3.2f);
 
                 rlPushMatrix();
-                    rlTranslatef(0, 2.6f, 0);
+                    float previewYOffset = 2.6f;
+                    if (current == VEHICLE_UFO) previewYOffset -= 0.6f;
+                    rlTranslatef(0, previewYOffset, 0);
                     rlRotatef(165.0f + sinf(t * 0.7f) * 8.0f, 0, 1, 0);
                     DrawVehicleModel(current, spinner);
                 rlPopMatrix();

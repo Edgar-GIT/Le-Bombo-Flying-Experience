@@ -180,6 +180,33 @@ void InitBuilding(Building* b, Building* buildings, int selfIndex,
     b->timeSinceHit = 0.0f;
 }
 
+//desenha laser com estilo por veiculo
+static void DrawVehicleLaserBeam(Vector3 start, Vector3 end, VehicleType vehicle) {
+    if (vehicle == VEHICLE_DRONE) {
+        //drone: tiro branco com outline preto
+        DrawCylinderEx(start, end,
+                       LASER_RADIUS * 1.55f, LASER_RADIUS * 1.55f,
+                       6, BLACK);
+        DrawCylinderEx(start, end,
+                       LASER_RADIUS * 0.78f, LASER_RADIUS * 0.78f,
+                       6, RAYWHITE);
+        return;
+    }
+
+    Color beamColor = LIME;
+    if (vehicle == VEHICLE_AIRPLANE) {
+        beamColor = (Color){ 160, 255, 95, 255 };
+    } else if (vehicle == VEHICLE_HELICOPTER) {
+        beamColor = (Color){ 255, 200, 70, 255 };
+    } else if (vehicle == VEHICLE_JET) {
+        beamColor = (Color){ 255, 115, 70, 255 };
+    } else if (vehicle == VEHICLE_UFO) {
+        beamColor = (Color){ 90, 185, 255, 255 };
+    }
+
+    DrawCylinderEx(start, end, LASER_RADIUS, LASER_RADIUS, 4, beamColor);
+}
+
 //jogo
 void GameRun(void) {
 
@@ -343,21 +370,27 @@ void GameRun(void) {
                         if (menuSliding) {
                             float currentX = -menuSlideDir * ease * slideDist;
                             float nextX = menuSlideDir * (1.0f - ease) * slideDist;
+                            float currentY = 2.6f;
+                            float nextY = 2.6f;
+                            if (previewVehicle == VEHICLE_UFO) currentY -= 0.6f;
+                            if (nextPreviewVehicle == VEHICLE_UFO) nextY -= 0.6f;
 
                             rlPushMatrix();
-                                rlTranslatef(currentX, 2.6f, 0);
+                                rlTranslatef(currentX, currentY, 0);
                                 rlRotatef(165.0f + sinf(t * 0.7f) * 8.0f, 0, 1, 0);
                                 DrawVehicleModel(previewVehicle, previewSpinner);
                             rlPopMatrix();
 
                             rlPushMatrix();
-                                rlTranslatef(nextX, 2.6f, 0);
+                                rlTranslatef(nextX, nextY, 0);
                                 rlRotatef(165.0f + sinf(t * 0.7f) * 8.0f, 0, 1, 0);
                                 DrawVehicleModel(nextPreviewVehicle, nextPreviewSpinner);
                             rlPopMatrix();
                         } else {
+                            float currentY = 2.6f;
+                            if (previewVehicle == VEHICLE_UFO) currentY -= 0.6f;
                             rlPushMatrix();
-                                rlTranslatef(0, 2.6f, 0);
+                                rlTranslatef(0, currentY, 0);
                                 rlRotatef(165.0f + sinf(t * 0.7f) * 8.0f, 0, 1, 0);
                                 DrawVehicleModel(previewVehicle, previewSpinner);
                             rlPopMatrix();
@@ -593,7 +626,9 @@ void GameRun(void) {
 
         // --- Fumo ---
         smokeTimer += dt;
-        if (smokeTimer >= SMOKE_SPAWN_INTERVAL && activeVehicle != VEHICLE_UFO) {
+        if (smokeTimer >= SMOKE_SPAWN_INTERVAL &&
+            activeVehicle != VEHICLE_UFO &&
+            activeVehicle != VEHICLE_DRONE) {
             smokeTimer = 0.0f;
             for (int i = 0; i < MAX_SMOKE; i++) {
                 if (!smokeArr[i].active) {
@@ -791,6 +826,23 @@ void GameRun(void) {
                                                       crazyColors, numCrazyColors,
                                                       fxExplode);
                     }
+                } else if (activeVehicle == VEHICLE_DRONE) {
+                    Vector3 droneFrontPos = Vector3Add(airplanePos, Vector3Scale(forward, 2.8f));
+                    Vector3 droneBackPos  = Vector3Add(airplanePos, Vector3Scale(back, 2.8f));
+                    AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                  droneFrontPos, forward,
+                                                  &buildings[i],
+                                                  &score, &laserAlpha,
+                                                  particles,
+                                                  crazyColors, numCrazyColors,
+                                                  fxExplode);
+                    AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                  droneBackPos, back,
+                                                  &buildings[i],
+                                                  &score, &laserAlpha,
+                                                  particles,
+                                                  crazyColors, numCrazyColors,
+                                                  fxExplode);
                 } else {
                     AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                   airplanePos, forward,
@@ -1003,9 +1055,26 @@ void GameRun(void) {
                             laserDir = Vector3Normalize(laserDir);
                             Vector3 laserStart = Vector3Add(airplanePos, Vector3Scale(laserDir, 2.5f));
                             Vector3 laserEnd = Vector3Add(laserStart, Vector3Scale(laserDir, LASER_LENGTH));
-                            DrawCylinderEx(laserStart, laserEnd,
-                                           LASER_RADIUS, LASER_RADIUS, 4, LIME);
+                            DrawVehicleLaserBeam(laserStart, laserEnd, activeVehicle);
                         }
+                    } else if (activeVehicle == VEHICLE_DRONE) {
+                        Vector3 gunFRLocal = (Vector3){ 0.72f, -0.04f, -3.10f };
+                        Vector3 gunFLLocal = (Vector3){ -0.72f, -0.04f, -3.10f };
+                        Vector3 gunBRLocal = (Vector3){ 0.72f, -0.04f, 3.10f };
+                        Vector3 gunBLLocal = (Vector3){ -0.72f, -0.04f, 3.10f };
+                        Vector3 wFR = Vector3Transform(gunFRLocal, rotation);
+                        Vector3 wFL = Vector3Transform(gunFLLocal, rotation);
+                        Vector3 wBR = Vector3Transform(gunBRLocal, rotation);
+                        Vector3 wBL = Vector3Transform(gunBLLocal, rotation);
+                        Vector3 lFR = Vector3Add(airplanePos, wFR);
+                        Vector3 lFL = Vector3Add(airplanePos, wFL);
+                        Vector3 lBR = Vector3Add(airplanePos, wBR);
+                        Vector3 lBL = Vector3Add(airplanePos, wBL);
+
+                        DrawVehicleLaserBeam(lFR, Vector3Add(lFR, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
+                        DrawVehicleLaserBeam(lFL, Vector3Add(lFL, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
+                        DrawVehicleLaserBeam(lBR, Vector3Add(lBR, Vector3Scale(back, LASER_LENGTH)), activeVehicle);
+                        DrawVehicleLaserBeam(lBL, Vector3Add(lBL, Vector3Scale(back, LASER_LENGTH)), activeVehicle);
                     } else {
                         // Aviões/Helicóptero/Jet disparam para a frente
                         Vector3 gunRLocal = (Vector3){ 2.5f, -0.05f, 0.0f };
@@ -1021,10 +1090,8 @@ void GameRun(void) {
                         Vector3 wL = Vector3Transform(gunLLocal, rotation);
                         Vector3 lR = Vector3Add(airplanePos, wR);
                         Vector3 lL = Vector3Add(airplanePos, wL);
-                        DrawCylinderEx(lR, Vector3Add(lR, Vector3Scale(forward, LASER_LENGTH)),
-                                       LASER_RADIUS, LASER_RADIUS, 4, LIME);
-                        DrawCylinderEx(lL, Vector3Add(lL, Vector3Scale(forward, LASER_LENGTH)),
-                                       LASER_RADIUS, LASER_RADIUS, 4, LIME);
+                        DrawVehicleLaserBeam(lR, Vector3Add(lR, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
+                        DrawVehicleLaserBeam(lL, Vector3Add(lL, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
                     }
                 }
 

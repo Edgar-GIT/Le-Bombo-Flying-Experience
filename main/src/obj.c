@@ -7,6 +7,7 @@ const char* GetVehicleName(VehicleType vehicle) {
         case VEHICLE_JET:        return "Jet F-16";
         case VEHICLE_AIRPLANE:   return "Airplane";
         case VEHICLE_UFO:        return "UFO";
+        case VEHICLE_DRONE:      return "Drone";
         default:                 return "Airplane";
     }
 }
@@ -223,7 +224,7 @@ void DrawJetModel(float detailAnimAngle) {
 }
 
 void DrawUfoModel(float animAngle) {
-    // ===== CORPO DO UFO =====
+    // corpo do ufo
     // Domo superior (vidro)
     DrawSphere((Vector3){0, 1.8f, 0}, 2.2f, (Color){100, 180, 220, 200});
     
@@ -273,6 +274,90 @@ void DrawUfoModel(float animAngle) {
     }
 }
 
+void DrawDroneModel(float rotorAngle){
+    Color bodyLight  = (Color){ 224, 226, 231, 255 };
+    Color bodyMid    = (Color){ 188, 192, 200, 255 };
+    Color bodyDark   = (Color){ 102, 108, 118, 255 };
+    Color armColor   = (Color){ 206, 210, 216, 255 };
+    Color rotorColor = (Color){ 235, 237, 239, 255 };
+    Color accentRed  = (Color){ 210, 45, 52, 255 };
+    Color lensBlue   = (Color){ 115, 172, 220, 255 };
+    Color outline    = (Color){ 28, 30, 34, 255 };
+
+    // corpo central
+    DrawCube((Vector3){ 0.0f, 0.20f, -0.10f }, 3.20f, 0.72f, 4.30f, bodyLight);
+    DrawCubeWires((Vector3){ 0.0f, 0.20f, -0.10f }, 3.24f, 0.76f, 4.34f, outline);
+    DrawCube((Vector3){ 0.0f, 0.58f, -0.45f }, 2.05f, 0.32f, 2.55f, bodyMid);
+    DrawCubeWires((Vector3){ 0.0f, 0.58f, -0.45f }, 2.09f, 0.36f, 2.59f, outline);
+    DrawCube((Vector3){ 0.0f, 0.52f, -2.10f }, 1.18f, 0.18f, 1.10f, bodyDark);
+    DrawSphere((Vector3){ 0.0f, 0.42f, -3.25f }, 0.66f, bodyMid);
+    DrawSphereWires((Vector3){ 0.0f, 0.42f, -3.25f }, 0.67f, 10, 14, outline);
+    DrawSphere((Vector3){ 0.0f, 0.75f, -1.30f }, 0.16f, Fade(WHITE, 0.8f));
+
+    // camera frontal
+    DrawSphere((Vector3){ 0.0f, -0.16f, -3.60f }, 0.55f, bodyDark);
+    DrawSphereWires((Vector3){ 0.0f, -0.16f, -3.60f }, 0.56f, 10, 12, outline);
+    DrawSphere((Vector3){ 0.0f, -0.16f, -3.78f }, 0.34f, (Color){ 230, 230, 230, 255 });
+    DrawSphere((Vector3){ 0.0f, -0.16f, -3.92f }, 0.20f, (Color){ 38, 42, 48, 255 });
+    DrawSphere((Vector3){ 0.0f, -0.16f, -3.98f }, 0.10f, lensBlue);
+
+    // suportes diagonais dos motores
+    float motorX[] = { -3.65f,  3.65f, -3.65f,  3.65f };
+    float motorZ[] = { -3.55f, -3.55f,  3.55f,  3.55f };
+    float armRotY[] = { 45.0f, -45.0f, -45.0f, 45.0f };
+
+    for (int i = 0; i < 4; i++) {
+        float armCenterX = motorX[i] * 0.52f;
+        float armCenterZ = motorZ[i] * 0.52f;
+
+        rlPushMatrix();
+            rlTranslatef(armCenterX, 0.26f, armCenterZ);
+            rlRotatef(armRotY[i], 0.0f, 1.0f, 0.0f);
+            DrawCube((Vector3){ 0.0f, 0.0f, 0.0f }, 0.88f, 0.26f, 4.95f, armColor);
+            DrawCubeWires((Vector3){ 0.0f, 0.0f, 0.0f }, 0.92f, 0.30f, 4.99f, outline);
+        rlPopMatrix();
+
+        // motor
+        DrawCylinderEx((Vector3){ motorX[i], 0.05f, motorZ[i] },
+                       (Vector3){ motorX[i], 0.94f, motorZ[i] },
+                       0.45f, 0.34f, 14, bodyLight);
+        DrawCylinderWires((Vector3){ motorX[i], 0.49f, motorZ[i] },
+                          0.46f, 0.35f, 0.90f, 14, outline);
+        DrawCylinderEx((Vector3){ motorX[i], 0.89f, motorZ[i] },
+                       (Vector3){ motorX[i], 1.08f, motorZ[i] },
+                       0.24f, 0.21f, 12, bodyDark);
+
+        // perna
+        DrawCube((Vector3){ motorX[i], -0.78f, motorZ[i] }, 0.60f, 1.32f, 0.72f, bodyLight);
+        DrawCubeWires((Vector3){ motorX[i], -0.78f, motorZ[i] }, 0.64f, 1.36f, 0.76f, outline);
+        DrawCube((Vector3){ motorX[i], -1.46f, motorZ[i] }, 0.32f, 0.15f, 0.36f, bodyDark);
+
+        // helice
+        rlPushMatrix();
+            rlTranslatef(motorX[i], 1.12f, motorZ[i]);
+            rlRotatef((i % 2 == 0) ? rotorAngle : -rotorAngle, 0.0f, 1.0f, 0.0f);
+            DrawCylinder((Vector3){ 0.0f, 0.0f, 0.0f }, 1.55f, 1.55f, 0.025f, 18, Fade(WHITE, 0.14f));
+            DrawCube((Vector3){ 0.0f, 0.0f, 0.0f }, 3.15f, 0.05f, 0.24f, rotorColor);
+            DrawCube((Vector3){ 0.0f, 0.0f, 0.0f }, 0.24f, 0.05f, 3.15f, rotorColor);
+            DrawCube((Vector3){ 1.48f, 0.0f, 0.0f }, 0.28f, 0.06f, 0.28f, accentRed);
+            DrawCube((Vector3){-1.48f, 0.0f, 0.0f }, 0.28f, 0.06f, 0.28f, accentRed);
+            DrawCube((Vector3){ 0.0f, 0.0f, 1.48f }, 0.28f, 0.06f, 0.28f, accentRed);
+            DrawCube((Vector3){ 0.0f, 0.0f,-1.48f }, 0.28f, 0.06f, 0.28f, accentRed);
+            DrawSphere((Vector3){ 0.0f, 0.0f, 0.0f }, 0.16f, outline);
+        rlPopMatrix();
+    }
+
+    // canhoes frente/tras para o ataque duplo
+    DrawCylinderEx((Vector3){ 0.72f, -0.04f, -3.10f }, (Vector3){ 0.72f, -0.04f, -4.15f },
+                   0.08f, 0.06f, 8, outline);
+    DrawCylinderEx((Vector3){-0.72f, -0.04f, -3.10f }, (Vector3){-0.72f, -0.04f, -4.15f },
+                   0.08f, 0.06f, 8, outline);
+    DrawCylinderEx((Vector3){ 0.72f, -0.04f,  3.10f }, (Vector3){ 0.72f, -0.04f,  4.15f },
+                   0.08f, 0.06f, 8, outline);
+    DrawCylinderEx((Vector3){-0.72f, -0.04f,  3.10f }, (Vector3){-0.72f, -0.04f,  4.15f },
+                   0.08f, 0.06f, 8, outline);
+}
+
 
 //desenha veiculo ativo
 void DrawVehicleModel(VehicleType vehicle, float spinnerAngle) {
@@ -281,6 +366,7 @@ void DrawVehicleModel(VehicleType vehicle, float spinnerAngle) {
         case VEHICLE_JET:        DrawJetModel(spinnerAngle); break;
         case VEHICLE_AIRPLANE:   DrawAirplaneModel(spinnerAngle); break;
         case VEHICLE_UFO:        DrawUfoModel(spinnerAngle); break;
+        case VEHICLE_DRONE:      DrawDroneModel(spinnerAngle); break;
         default:                 DrawAirplaneModel(spinnerAngle); break;
     }
 }

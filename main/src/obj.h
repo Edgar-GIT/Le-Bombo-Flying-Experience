@@ -8,6 +8,7 @@ void DrawAirplaneModel(float propellerAngle);
 void DrawHelicopterModel(float rotorAngle);
 void DrawJetModel(float detailAnimAngle);
 void DrawUfoModel(float animAngle);
+void DrawDroneModel(float rotorAngle);
 void DrawVehicleModel(VehicleType vehicle, float spinnerAngle);
 
 #endif
