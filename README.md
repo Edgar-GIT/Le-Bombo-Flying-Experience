@@ -23,7 +23,7 @@ You fly around a colorful procedural city, choose different vehicles, and cause 
 
 ## What The Game Includes
 
-- 3D flight gameplay with multiple vehicles (Hellicopter, Alien ship, Plane and f16 Jet)
+- 3D flight gameplay with multiple vehicles (Hellicopter, Alien ship, Plane, Drone, Stealth bomber and f16 Jet)
 - Procedural city generation with animated buildings/clouds
 - Combat systems: machine-gun, laser, standard bombs, nuclear strike
 - Particle-heavy explosions, shockwaves, smoke trails, debris rain

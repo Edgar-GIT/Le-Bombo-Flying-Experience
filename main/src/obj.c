@@ -8,6 +8,7 @@ const char* GetVehicleName(VehicleType vehicle) {
         case VEHICLE_AIRPLANE:   return "Airplane";
         case VEHICLE_UFO:        return "UFO";
         case VEHICLE_DRONE:      return "Drone";
+        case VEHICLE_HAWK:       return "Hawk";
         default:                 return "Airplane";
     }
 }
@@ -358,6 +359,10 @@ void DrawDroneModel(float rotorAngle){
                    0.08f, 0.06f, 8, outline);
 }
 
+void DrawHawkModel(float spinnerAngle){
+
+}
+
 
 //desenha veiculo ativo
 void DrawVehicleModel(VehicleType vehicle, float spinnerAngle) {
@@ -367,6 +372,7 @@ void DrawVehicleModel(VehicleType vehicle, float spinnerAngle) {
         case VEHICLE_AIRPLANE:   DrawAirplaneModel(spinnerAngle); break;
         case VEHICLE_UFO:        DrawUfoModel(spinnerAngle); break;
         case VEHICLE_DRONE:      DrawDroneModel(spinnerAngle); break;
+        case VEHICLE_HAWK:       DrawHawkModel(spinnerAngle); break;
         default:                 DrawAirplaneModel(spinnerAngle); break;
     }
 }
