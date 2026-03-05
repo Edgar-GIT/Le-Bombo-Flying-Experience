@@ -360,7 +360,15 @@ void DrawDroneModel(float rotorAngle){
 }
 
 void DrawHawkModel(float spinnerAngle){
+      
+    Color bodyDark  = (Color){ 0, 0, 0, 1 };
+    Color efcs      = (Color){ 25, 25, 25, 1 };
+    Color glass     = (Color){ 255, 255, 255, 1 };
+    Color outline   = (Color){ 141, 90, 62, 1};
 
+      //corpo
+
+      
 }
 
 
