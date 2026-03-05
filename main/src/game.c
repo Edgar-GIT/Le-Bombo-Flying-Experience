@@ -660,7 +660,7 @@ void GameRun(void) {
         smokeTimer += dt;
         if (smokeTimer >= SMOKE_SPAWN_INTERVAL &&
             activeVehicle != VEHICLE_UFO &&
-            activeVehicle != VEHICLE_DRONE) {
+            activeVehicle != VEHICLE_DRONE && activeVehicle != VEHICLE_HAWK) {
             smokeTimer = 0.0f;
             for (int i = 0; i < MAX_SMOKE; i++) {
                 if (!smokeArr[i].active) {
