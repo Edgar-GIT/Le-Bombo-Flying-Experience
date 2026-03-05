@@ -87,6 +87,11 @@ void UpdateSpecialScoreEvents(int score,
             SeekMusicStream(*musicChicken, 0.0f);
             PlayMusicStream(*musicChicken);
         }
+
+        //mantem overlay chicken visivel enquanto a musica chicken tocar
+        if (IsMusicStreamPlaying(*musicChicken)) {
+            *chickenAlpha = 1.0f;
+        }
     }
 
     if (!IsMusicStreamPlaying(*musicKirk) && *kirkAlpha <= 0.0f &&

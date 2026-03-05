@@ -358,17 +358,127 @@ void DrawDroneModel(float rotorAngle){
     DrawCylinderEx((Vector3){-1.02f, -0.04f,  3.10f }, (Vector3){-1.02f, -0.04f,  4.15f },
                    0.08f, 0.06f, 8, outline);
 }
+void DrawHawkModel(float spinnerAngle) {
 
-void DrawHawkModel(float spinnerAngle){
-      
-    Color bodyDark  = (Color){ 0, 0, 0, 1 };
-    Color efcs      = (Color){ 25, 25, 25, 1 };
-    Color glass     = (Color){ 255, 255, 255, 1 };
-    Color outline   = (Color){ 141, 90, 62, 1};
+    Color skin      = (Color){  42,  52,  78, 255 };
+    Color skinMid   = (Color){  55,  68,  98, 255 };
+    Color skinLight = (Color){  72,  88, 120, 255 };
+    Color skinDark  = (Color){  22,  28,  45, 255 };
+    Color intakeBlk = (Color){   6,   8,  16, 255 };
+    Color panelCol  = (Color){ 130, 155, 195, 200 };
+    Color exhaustCol= (Color){  18,  22,  38, 255 };
+    Color outline   = (Color){  14,  18,  32, 255 };
 
-      //corpo
+    float yBase = 0.0f;
+    float yTop  = 0.18f;
+    float hY    = yTop + 0.32f;
+    float pY    = yTop + 0.005f;
 
-      
+    // macro inline para triângulo flat (dois lados visíveis)
+    #define FTRI(ax,ay,az, bx,by,bz, cx,cy,cz, col) \
+        rlBegin(RL_TRIANGLES); \
+            rlColor4ub((col).r,(col).g,(col).b,(col).a); \
+            rlVertex3f(ax,ay,az); rlVertex3f(bx,by,bz); rlVertex3f(cx,cy,cz); \
+            rlVertex3f(cx,cy,cz); rlVertex3f(bx,by,bz); rlVertex3f(ax,ay,az); \
+        rlEnd();
+
+    // asa esquerda exterior
+    FTRI(-5.8f,yBase,-1.6f, -13.5f,yBase,0.8f,  -13.5f,yBase,2.8f,  skin)
+    FTRI(-5.8f,yBase,-1.6f, -13.5f,yBase,2.8f,   -7.2f,yBase,3.6f,  skin)
+    FTRI(-5.8f,yBase,-1.6f,  -7.2f,yBase,3.6f,   -3.8f,yBase,2.4f,  skin)
+
+    // asa direita exterior
+    FTRI( 5.8f,yBase,-1.6f,  13.5f,yBase,0.8f,   13.5f,yBase,2.8f,  skin)
+    FTRI( 5.8f,yBase,-1.6f,  13.5f,yBase,2.8f,    7.2f,yBase,3.6f,  skin)
+    FTRI( 5.8f,yBase,-1.6f,   7.2f,yBase,3.6f,    3.8f,yBase,2.4f,  skin)
+
+    // corpo central — nariz
+    FTRI( 0.0f,yTop,-5.2f,  -5.8f,yTop,-1.6f,   5.8f,yTop,-1.6f,   skinMid)
+
+    // corpo central — zona larga
+    FTRI(-5.8f,yTop,-1.6f,   5.8f,yTop,-1.6f,   3.8f,yTop, 2.4f,   skinMid)
+    FTRI(-5.8f,yTop,-1.6f,   3.8f,yTop, 2.4f,  -3.8f,yTop, 2.4f,   skinMid)
+
+    // bordo de fuga W central
+    FTRI(-3.8f,yTop, 2.4f,   3.8f,yTop, 2.4f,   0.0f,yTop, 3.4f,   skinMid)
+    FTRI(-3.8f,yTop, 2.4f,   0.0f,yTop, 3.4f,  -1.4f,yTop, 4.2f,   skinMid)
+    FTRI( 3.8f,yTop, 2.4f,   0.0f,yTop, 3.4f,   1.4f,yTop, 4.2f,   skinMid)
+
+    // transição corpo → asa esquerda
+    FTRI(-5.8f,yTop,-1.6f,  -5.8f,yBase,-1.6f,  -3.8f,yBase,2.4f,  skin)
+    FTRI(-5.8f,yTop,-1.6f,  -3.8f,yBase, 2.4f,  -3.8f,yTop, 2.4f,  skin)
+
+    // transição corpo → asa direita
+    FTRI( 5.8f,yTop,-1.6f,   5.8f,yBase,-1.6f,   3.8f,yBase,2.4f,  skin)
+    FTRI( 5.8f,yTop,-1.6f,   3.8f,yBase, 2.4f,   3.8f,yTop, 2.4f,  skin)
+
+    #undef FTRI
+
+    // dorso elevado
+    DrawCube((Vector3){  0.0f, yTop+0.22f,  0.2f }, 4.2f, 0.28f, 3.8f, skinLight);
+    DrawCube((Vector3){  0.0f, yTop+0.30f, -0.8f }, 2.8f, 0.18f, 2.2f, skinLight);
+    DrawCube((Vector3){  0.0f, yTop+0.14f, -2.9f }, 1.8f, 0.12f, 1.8f, skinLight);
+
+    // cockpit
+    DrawCube((Vector3){ 0.0f, yTop+0.24f, -2.6f }, 0.9f, 0.10f, 0.9f, (Color){60,80,115,220});
+
+    // intakes
+    DrawCube((Vector3){  1.35f, hY-0.05f,  0.55f }, 1.55f, 0.28f, 1.45f, skinDark);
+    DrawCube((Vector3){  1.35f, hY-0.08f,  0.55f }, 1.10f, 0.18f, 1.05f, intakeBlk);
+    DrawCube((Vector3){  1.35f, hY+0.06f, -0.08f }, 1.50f, 0.06f, 0.18f, skinDark);
+    DrawCube((Vector3){ -1.35f, hY-0.05f,  0.55f }, 1.55f, 0.28f, 1.45f, skinDark);
+    DrawCube((Vector3){ -1.35f, hY-0.08f,  0.55f }, 1.10f, 0.18f, 1.05f, intakeBlk);
+    DrawCube((Vector3){ -1.35f, hY+0.06f, -0.08f }, 1.50f, 0.06f, 0.18f, skinDark);
+
+    // exaustores com glow animado
+    float glow = 0.15f + fabsf(sinf(spinnerAngle * DEG2RAD * 0.8f)) * 0.35f;
+    Color exhaustGlow = Fade((Color){255,140,40,255}, glow);
+    DrawCube((Vector3){  0.85f, yTop+0.28f, 2.85f }, 0.75f, 0.18f, 0.80f, exhaustCol);
+    DrawCube((Vector3){  0.85f, yTop+0.22f, 3.05f }, 0.50f, 0.10f, 0.28f, exhaustGlow);
+    DrawCube((Vector3){ -0.85f, yTop+0.28f, 2.85f }, 0.75f, 0.18f, 0.80f, exhaustCol);
+    DrawCube((Vector3){ -0.85f, yTop+0.22f, 3.05f }, 0.50f, 0.10f, 0.28f, exhaustGlow);
+
+    // linhas de painel — weapon bay e centro
+    DrawCube((Vector3){  0.0f,  pY+0.22f, -1.0f }, 0.04f, 0.025f, 5.5f, panelCol);
+    DrawCube((Vector3){  0.95f, pY+0.22f,  0.3f }, 0.04f, 0.025f, 3.2f, panelCol);
+    DrawCube((Vector3){ -0.95f, pY+0.22f,  0.3f }, 0.04f, 0.025f, 3.2f, panelCol);
+    DrawCube((Vector3){  0.0f,  pY+0.22f, -1.2f }, 1.94f, 0.025f, 0.04f, panelCol);
+    DrawCube((Vector3){  0.0f,  pY+0.22f,  1.8f }, 1.94f, 0.025f, 0.04f, panelCol);
+
+    // linhas de painel — contorno dos intakes
+    DrawCube((Vector3){  1.35f, pY+0.42f,  0.55f }, 1.80f, 0.025f, 0.04f, panelCol);
+    DrawCube((Vector3){ -1.35f, pY+0.42f,  0.55f }, 1.80f, 0.025f, 0.04f, panelCol);
+    DrawCube((Vector3){  1.35f, pY+0.42f, -0.15f }, 0.04f, 0.025f, 1.40f, panelCol);
+    DrawCube((Vector3){  1.35f, pY+0.42f,  1.25f }, 0.04f, 0.025f, 1.40f, panelCol);
+    DrawCube((Vector3){ -1.35f, pY+0.42f, -0.15f }, 0.04f, 0.025f, 1.40f, panelCol);
+    DrawCube((Vector3){ -1.35f, pY+0.42f,  1.25f }, 0.04f, 0.025f, 1.40f, panelCol);
+
+    // linhas de painel — asas
+    rlPushMatrix(); rlTranslatef( 5.5f,pY,-0.3f); rlRotatef(-37.0f,0,1,0);
+        DrawCube((Vector3){0,0,0}, 4.8f, 0.025f, 0.04f, panelCol); rlPopMatrix();
+    rlPushMatrix(); rlTranslatef( 9.8f,pY, 1.2f); rlRotatef(-20.0f,0,1,0);
+        DrawCube((Vector3){0,0,0}, 4.2f, 0.025f, 0.04f, panelCol); rlPopMatrix();
+    rlPushMatrix(); rlTranslatef(-5.5f,pY,-0.3f); rlRotatef( 37.0f,0,1,0);
+        DrawCube((Vector3){0,0,0}, 4.8f, 0.025f, 0.04f, panelCol); rlPopMatrix();
+    rlPushMatrix(); rlTranslatef(-9.8f,pY, 1.2f); rlRotatef( 20.0f,0,1,0);
+        DrawCube((Vector3){0,0,0}, 4.2f, 0.025f, 0.04f, panelCol); rlPopMatrix();
+
+    // bordos de ataque
+    rlPushMatrix(); rlTranslatef( 3.8f,0,-2.0f); rlRotatef(-53.0f,0,1,0);
+        DrawCube((Vector3){0,0.12f,0}, 7.5f, 0.08f, 0.18f, skinDark); rlPopMatrix();
+    rlPushMatrix(); rlTranslatef( 9.6f,0, 0.4f); rlRotatef(-22.0f,0,1,0);
+        DrawCube((Vector3){0,0.08f,0}, 5.5f, 0.06f, 0.14f, skinDark); rlPopMatrix();
+    rlPushMatrix(); rlTranslatef(-3.8f,0,-2.0f); rlRotatef( 53.0f,0,1,0);
+        DrawCube((Vector3){0,0.12f,0}, 7.5f, 0.08f, 0.18f, skinDark); rlPopMatrix();
+    rlPushMatrix(); rlTranslatef(-9.6f,0, 0.4f); rlRotatef( 22.0f,0,1,0);
+        DrawCube((Vector3){0,0.08f,0}, 5.5f, 0.06f, 0.14f, skinDark); rlPopMatrix();
+
+    // trem de aterragem
+    DrawCube((Vector3){ 0.0f, -0.35f, -1.2f }, 0.18f, 0.70f, 0.18f, outline);
+    DrawCube((Vector3){ 0.0f, -0.72f, -1.2f }, 0.55f, 0.08f, 0.22f, outline);
+
+    // sombra ventral
+    DrawCube((Vector3){ 0.0f, -0.06f, -0.5f }, 6.5f, 0.06f, 6.5f, (Color){18,22,35,180});
 }
 
 

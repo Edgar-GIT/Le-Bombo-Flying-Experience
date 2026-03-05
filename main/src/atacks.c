@@ -25,6 +25,27 @@ void DrawNukeBombModel(float spinAngle) {
     rlPopMatrix();
 }
 
+//devolve tier do combo com base na streak atual
+static int ComboTierFromStreak(int hitStreak) {
+    if (hitStreak >= COMBO_X3_HITS) return 3;
+    if (hitStreak >= COMBO_X2_HITS) return 2;
+    if (hitStreak >= COMBO_X1_HITS) return 1;
+    return 0;
+}
+
+//regista hit de building no sistema de combo
+static void ComboRegisterBuildingHit(int* comboHitStreak, int* comboLevel, float* comboTimer) {
+    (*comboHitStreak)++;
+    *comboLevel = ComboTierFromStreak(*comboHitStreak);
+    *comboTimer = 0.0f;
+}
+
+//aplica pontuaçao com multiplicador do combo ativo
+static void ComboAddScore(int basePoints, int comboLevel, int* score) {
+    int multiplier = comboLevel + 1;
+    *score += basePoints * multiplier;
+}
+
 
 //sistema de disparo (blast + metralhadora)
 //retorna true quando deve haver tiro neste frame
@@ -111,13 +132,32 @@ void AttackTrySpawnBomb(bool triggerPressed,
 
     bomb->active = true;
     Vector3 bombLocal = { 0.0f, 0.0f, 0.0f };
+    Vector3 bombVelocity = Vector3Scale(forward, BOMB_FORWARD_SPEED);
     if (activeVehicle == VEHICLE_HELICOPTER) {
         bombLocal = (Vector3){ 0.0f, -0.8f, -0.8f };
     } else if (activeVehicle == VEHICLE_JET) {
         bombLocal = (Vector3){ 0.0f, -0.5f, -1.7f };
+    } else if (activeVehicle == VEHICLE_HAWK) {
+        //hawk: usa 3 hardpoints para largar bombas separadas
+        static int hawkHardpointCycle = 0;
+        int idx = hawkHardpointCycle % 3;
+        hawkHardpointCycle++;
+
+        const Vector3 hawkHardpoints[3] = {
+            (Vector3){ -2.20f, -0.34f, -1.25f },
+            (Vector3){  0.00f, -0.28f, -1.38f },
+            (Vector3){  2.20f, -0.34f, -1.25f }
+        };
+        const float hawkSideSpeed[3] = { -0.16f, 0.0f, 0.16f };
+        const float hawkDropKick[3]  = { 0.010f, 0.0f, 0.010f };
+
+        bombLocal = hawkHardpoints[idx];
+        Vector3 right = Vector3Normalize(Vector3Transform((Vector3){ 1.0f, 0.0f, 0.0f }, rotation));
+        bombVelocity = Vector3Add(bombVelocity, Vector3Scale(right, hawkSideSpeed[idx]));
+        bombVelocity.y -= hawkDropKick[idx];
     }
     bomb->position = Vector3Add(airplanePos, Vector3Transform(bombLocal, rotation));
-    bomb->velocity = Vector3Scale(forward, BOMB_FORWARD_SPEED);
+    bomb->velocity = bombVelocity;
     (*bombCount)--;
     PlaySound(fxAlert);
 }
@@ -147,13 +187,15 @@ void AttackTrySpawnNuke(bool triggerPressed,
 
 
 //fisica da bomba normal + explosao (blast)
-void AttackUpdateBomb(float dt,
+bool AttackUpdateBomb(float dt,
                       Bomb* bomb, Building* buildings, int* score, float* scaredAlpha,
                       Particle* particles,
                       Color* crazyColors, int numColors,
+                      int* comboHitStreak, int* comboLevel, float* comboTimer,
+                      bool triggerBlastFeedback,
                       Sound fxKaboom) {
     (void)dt;
-    if (!bomb->active) return;
+    if (!bomb->active) return false;
 
     bomb->position = Vector3Add(bomb->position, bomb->velocity);
     bomb->velocity.y -= BOMB_GRAVITY;
@@ -180,20 +222,26 @@ void AttackUpdateBomb(float dt,
         }
     }
 
-    if (!exploded) return;
+    if (!exploded) return false;
 
     bomb->active = false;
-    *scaredAlpha = 1.0f;
-    PlaySound(fxKaboom);
+    if (triggerBlastFeedback) {
+        *scaredAlpha = 1.0f;
+        StopSound(fxKaboom);
+        PlaySound(fxKaboom);
+    }
     SpawnExplosion(bomb->position, particles, crazyColors, numColors);
 
     for (int i = 0; i < MAX_BUILDINGS; i++) {
         if (buildings[i].active &&
             Vector3Distance(bomb->position, buildings[i].position) <= EXPLOSION_RADIUS) {
             buildings[i].active = false;
-            *score += buildings[i].isGolden ? 500 : 100;
+            ComboRegisterBuildingHit(comboHitStreak, comboLevel, comboTimer);
+            ComboAddScore(buildings[i].isGolden ? 500 : 100, *comboLevel, score);
         }
     }
+
+    return true;
 }
 
 
@@ -201,7 +249,9 @@ void AttackUpdateBomb(float dt,
 void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
                                    Vector3 airplanePos, Vector3 forward,
                                    Building* building,
-                                   int* score, float* laserAlpha, float* goldenHitAlpha,
+                                   int* score,
+                                   int* comboHitStreak, int* comboLevel, float* comboTimer,
+                                   float* laserAlpha, float* goldenHitAlpha,
                                    Particle* particles,
                                    Color* crazyColors, int numColors,
                                    Sound fxExplode, Sound fxGoldenHit) {
@@ -223,7 +273,8 @@ void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
     bool hitGolden = building->isGolden;
     building->active = false;
     building->timeSinceHit = 0.0f;
-    *score += hitGolden ? 500 : 100;
+    ComboRegisterBuildingHit(comboHitStreak, comboLevel, comboTimer);
+    ComboAddScore(hitGolden ? 500 : 100, *comboLevel, score);
 
     if (hitGolden) {
         *laserAlpha = 0.0f;
@@ -241,6 +292,7 @@ void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
 //fisica da bomba nuclear e impacto global
 void AttackUpdateNuke(float dt,
                       NukeBomb* nukeBomb, Building* buildings, int* score,
+                      int* comboHitStreak, int* comboLevel, float* comboTimer,
                       NukeTrail* nukeTrails, float* nukeTrailTimer, float* nukeAlertTimer,
                       float* nukeCoverAlpha, bool* worldWipedByNuke,
                       bool* nukeRainActive, float* nukeRainTimer, float* nukeRainSpawnTimer,
@@ -320,7 +372,7 @@ void AttackUpdateNuke(float dt,
     *nukeRainActive = true;
     *nukeRainTimer = 0.0f;
     *nukeRainSpawnTimer = 0.0f;
-    *score += NUKE_SCORE_BONUS;
+    ComboAddScore(NUKE_SCORE_BONUS, *comboLevel, score);
     *lastKirkScore = *score;
     *lastDimaScore = *score;
 
@@ -338,6 +390,8 @@ void AttackUpdateNuke(float dt,
         if (buildings[i].active) {
             buildings[i].active = false;
             buildings[i].timeSinceHit = 0.0f;
+            ComboRegisterBuildingHit(comboHitStreak, comboLevel, comboTimer);
+            ComboAddScore(buildings[i].isGolden ? 500 : 100, *comboLevel, score);
         }
     }
 }

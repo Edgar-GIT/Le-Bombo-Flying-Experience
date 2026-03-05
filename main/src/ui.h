@@ -43,7 +43,8 @@ void UIDrawGameplayHUD(int score, bool blinkOn,
                        bool nukeUsed, float machineGunCooldown,
                        bool machineGunActive, float spaceHeldTime,
                        bool nukeActive, bool nukeWaitingImpact,
-                       float nukeAlertTimer, bool nukeRainActive);
+                       float nukeAlertTimer, bool nukeRainActive,
+                       int comboLevel, int comboHitStreak);
 
 void UIDrawCrosshair(void);
 

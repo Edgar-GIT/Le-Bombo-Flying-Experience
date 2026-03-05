@@ -236,7 +236,8 @@ void UIDrawGameplayHUD(int score, bool blinkOn,
                        bool nukeUsed, float machineGunCooldown,
                        bool machineGunActive, float spaceHeldTime,
                        bool nukeActive, bool nukeWaitingImpact,
-                       float nukeAlertTimer, bool nukeRainActive) {
+                       float nukeAlertTimer, bool nukeRainActive,
+                       int comboLevel, int comboHitStreak) {
     if (nukeActive || nukeWaitingImpact) {
         bool alertOn = sinf(nukeAlertTimer) > 0.0f;
         int fs = alertOn ? 56 : 48;
@@ -254,6 +255,33 @@ void UIDrawGameplayHUD(int score, bool blinkOn,
                  GetScreenWidth()/2 - tw/2, 92, 42,
                  Fade(ORANGE, 0.92f));
     }
+
+    //bloco de combo (topo direito)
+    int comboW = 250;
+    int comboH = 110;
+    int comboX = GetScreenWidth() - comboW - 12;
+    int comboY = 10;
+    DrawRectangle(comboX, comboY, comboW, comboH, Fade(BLACK, 0.58f));
+    DrawRectangleLinesEx((Rectangle){ (float)comboX, (float)comboY, (float)comboW, (float)comboH }, 2.0f, Fade(RAYWHITE, 0.75f));
+    DrawText("COMBO", comboX + 14, comboY + 10, 24, RAYWHITE);
+
+    int comboMultiplier = comboLevel + 1;
+    Color comboColor = LIGHTGRAY;
+    if (comboLevel == 1) comboColor = YELLOW;
+    else if (comboLevel == 2) comboColor = ORANGE;
+    else if (comboLevel == 3) comboColor = RED;
+
+    if (comboLevel == 3) {
+        float t = (float)GetTime();
+        float pulse = 1.0f + sinf(t * 9.0f) * 0.16f;
+        comboColor = ColorFromHSV(fmodf(t * 250.0f, 360.0f), 0.95f, 1.0f);
+        int fs = (int)(48.0f * pulse);
+        DrawText(TextFormat("x%d", comboLevel), comboX + 16, comboY + 38, fs, comboColor);
+    } else {
+        DrawText(TextFormat("x%d", comboLevel), comboX + 16, comboY + 42, 44, comboColor);
+    }
+    DrawText(TextFormat("HITS: %d", comboHitStreak), comboX + 118, comboY + 46, 24, comboColor);
+    DrawText(TextFormat("SCORE x%d", comboMultiplier), comboX + 118, comboY + 76, 20, Fade(comboColor, 0.95f));
 
     DrawRectangle(10,10,220,40,Fade(BLACK,0.5f));
     DrawText(TextFormat("SCORE: %05i",score),20,20,20,blinkOn?YELLOW:RED);

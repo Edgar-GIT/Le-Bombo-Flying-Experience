@@ -96,6 +96,12 @@
 // --- HUD ---
 #define BLINK_SPEED              4.0f
 
+// --- COMBO ---
+#define COMBO_HIT_WINDOW         1.0f
+#define COMBO_X1_HITS             10
+#define COMBO_X2_HITS             20
+#define COMBO_X3_HITS             30
+
 // --- RECURSOS ---
 
 #define ASSET_MUSIC_DIR   "music/"

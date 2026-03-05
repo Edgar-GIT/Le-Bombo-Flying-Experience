@@ -202,9 +202,32 @@ static void DrawVehicleLaserBeam(Vector3 start, Vector3 end, VehicleType vehicle
         beamColor = (Color){ 255, 115, 70, 255 };
     } else if (vehicle == VEHICLE_UFO) {
         beamColor = (Color){ 90, 185, 255, 255 };
+    } else if (vehicle == VEHICLE_HAWK) {
+        beamColor = (Color){ 255, 70, 70, 255 };
     }
 
     DrawCylinderEx(start, end, LASER_RADIUS, LASER_RADIUS, 4, beamColor);
+}
+
+//procura slot livre para bomba ativa
+static Bomb* GetFreeBombSlot(Bomb* bombs) {
+    for (int i = 0; i < MAX_BOMBS; i++) {
+        if (!bombs[i].active) return &bombs[i];
+    }
+    return NULL;
+}
+
+//verifica se ha alguma bomba ativa no mundo
+static bool HasAnyActiveBomb(const Bomb* bombs) {
+    for (int i = 0; i < MAX_BOMBS; i++) {
+        if (bombs[i].active) return true;
+    }
+    return false;
+}
+
+//limpa todas as bombas ativas
+static void ResetBombSlots(Bomb* bombs) {
+    for (int i = 0; i < MAX_BOMBS; i++) bombs[i].active = false;
 }
 
 //jogo
@@ -256,7 +279,7 @@ void GameRun(void) {
     Cloud clouds[MAX_CLOUDS];
     for (int i = 0; i < MAX_CLOUDS; i++) InitCloud(&clouds[i], crazyColors, numCrazyColors);
 
-    Bomb           bomb                     = { 0 };
+    Bomb           bombs[MAX_BOMBS]         = { 0 };
     Particle       particles[MAX_PARTICLES] = { 0 };
     Smoke          smokeArr[MAX_SMOKE]      = { 0 };
     NukeTrail      nukeTrails[MAX_NUKE_TRAILS] = { 0 };
@@ -291,6 +314,12 @@ void GameRun(void) {
 
     int   bombCount      = MAX_BOMBS;
     float bombRegenTimer = 0.0f;
+    int   hawkBurstPending = 0;
+    float hawkBurstTimer = 0.0f;
+    bool  hawkBurstFeedbackPending = false;
+    int   comboHitStreak = 0;
+    int   comboLevel = 0;
+    float comboTimer = 0.0f;
     float colorCycleTimer = 0.0f;
     bool  gameOver       = false;
     bool  worldWipedByNuke = false;
@@ -437,7 +466,11 @@ void GameRun(void) {
                         spFadeAlpha = nukeCoverAlpha = 0.0f;
                         nukeTrailTimer = 0.0f; nukeAlertTimer = 0.0f;
                         nukeRainTimer = 0.0f; nukeRainSpawnTimer = 0.0f;
-                        bomb.active = false; gameOver = false;
+                        ResetBombSlots(bombs);
+                        hawkBurstPending = 0; hawkBurstTimer = 0.0f;
+                        hawkBurstFeedbackPending = false;
+                        comboHitStreak = 0; comboLevel = 0; comboTimer = 0.0f;
+                        gameOver = false;
                         worldWipedByNuke = false;
                         nukeRainActive = false;
                         nukeBomb = (NukeBomb){ 0 };
@@ -497,6 +530,10 @@ void GameRun(void) {
                 nukeBomb.active = false;
                 nukeBomb.waitingImpactSound = false;
                 nukeRainActive = false;
+                hawkBurstPending = 0;
+                hawkBurstTimer = 0.0f;
+                hawkBurstFeedbackPending = false;
+                comboHitStreak = 0; comboLevel = 0; comboTimer = 0.0f;
                 StopSound(fxFail);
                 StopSound(fxNukeHit);
                 StopSound(fxGoldenHit);
@@ -517,7 +554,11 @@ void GameRun(void) {
                 spFadeAlpha = nukeCoverAlpha = 0.0f;
                 nukeTrailTimer = 0.0f; nukeAlertTimer = 0.0f;
                 nukeRainTimer = 0.0f; nukeRainSpawnTimer = 0.0f;
-                bomb.active = false; gameOver = false;
+                ResetBombSlots(bombs);
+                hawkBurstPending = 0; hawkBurstTimer = 0.0f;
+                hawkBurstFeedbackPending = false;
+                comboHitStreak = 0; comboLevel = 0; comboTimer = 0.0f;
+                gameOver = false;
                 worldWipedByNuke = false;
                 nukeRainActive = false;
                 nukeBomb = (NukeBomb){ 0 };
@@ -569,6 +610,10 @@ void GameRun(void) {
             nukeBomb.active = false;
             nukeBomb.waitingImpactSound = false;
             nukeRainActive = false;
+            hawkBurstPending = 0;
+            hawkBurstTimer = 0.0f;
+            hawkBurstFeedbackPending = false;
+            comboHitStreak = 0; comboLevel = 0; comboTimer = 0.0f;
             StopSound(fxFail);
             StopSound(fxNukeHit);
             StopSound(fxGoldenHit);
@@ -689,6 +734,18 @@ void GameRun(void) {
             }
         }
 
+        // --- Combo (expira se ficar >1s sem destruir edificio) ---
+        if (comboHitStreak > 0) {
+            comboTimer += dt;
+            if (comboTimer > COMBO_HIT_WINDOW) {
+                comboHitStreak = 0;
+                comboLevel = 0;
+                comboTimer = 0.0f;
+            }
+        } else {
+            comboTimer = 0.0f;
+        }
+
         // --- Metralhadora ---
         bool shooting = AttackUpdateMachineGun(dt,
                                                &spaceHeldTime, &machineGunActive,
@@ -697,11 +754,49 @@ void GameRun(void) {
                                                fxShoot, fxMachine);
 
         // --- Bomba ---
-        AttackTrySpawnBomb(IsKeyPressed(KEY_B),
-                           &bomb, &bombCount,
-                           activeVehicle,
-                           airplanePos, rotation, forward,
-                           fxAlert);
+        bool bombPressed = IsKeyPressed(KEY_B);
+        if (activeVehicle == VEHICLE_HAWK) {
+            const float hawkBombBurstInterval = 0.40f;
+
+            if (bombPressed && bombCount > 0) {
+                hawkBurstPending = (bombCount >= 3) ? 3 : bombCount;
+                hawkBurstTimer = 0.0f;
+                hawkBurstFeedbackPending = true;
+            }
+
+            if (hawkBurstPending > 0) {
+                hawkBurstTimer -= dt;
+                if (hawkBurstTimer <= 0.0f) {
+                    Bomb* freeBomb = GetFreeBombSlot(bombs);
+                    if (freeBomb != NULL) {
+                        AttackTrySpawnBomb(true,
+                                           freeBomb, &bombCount,
+                                           activeVehicle,
+                                           airplanePos, rotation, forward,
+                                           fxAlert);
+                        if (freeBomb->active) {
+                            hawkBurstPending--;
+                            hawkBurstTimer = hawkBombBurstInterval;
+                        }
+                    }
+                }
+            }
+        } else {
+            hawkBurstPending = 0;
+            hawkBurstTimer = 0.0f;
+            hawkBurstFeedbackPending = false;
+
+            if (bombPressed && !HasAnyActiveBomb(bombs)) {
+                Bomb* freeBomb = GetFreeBombSlot(bombs);
+                if (freeBomb != NULL) {
+                    AttackTrySpawnBomb(true,
+                                       freeBomb, &bombCount,
+                                       activeVehicle,
+                                       airplanePos, rotation, forward,
+                                       fxAlert);
+                }
+            }
+        }
 
         // --- Bomba Nuclear ---
         AttackTrySpawnNuke(IsKeyPressed(KEY_F),
@@ -713,14 +808,27 @@ void GameRun(void) {
         AttackUpdateBombInventory(dt, &bombCount, &bombRegenTimer);
 
         // --- Fisica bomba + blast ---
-        AttackUpdateBomb(dt, &bomb, buildings, &score, &scaredAlpha,
-                         particles,
-                         crazyColors, numCrazyColors,
-                         fxKaboom);
+        for (int i = 0; i < MAX_BOMBS; i++) {
+            bool triggerBlastFeedback = true;
+            if (activeVehicle == VEHICLE_HAWK) {
+                triggerBlastFeedback = hawkBurstFeedbackPending;
+            }
+
+            bool bombExploded = AttackUpdateBomb(dt, &bombs[i], buildings, &score, &scaredAlpha,
+                                                 particles,
+                                                 crazyColors, numCrazyColors,
+                                                 &comboHitStreak, &comboLevel, &comboTimer,
+                                                 triggerBlastFeedback,
+                                                 fxKaboom);
+            if (activeVehicle == VEHICLE_HAWK && bombExploded && hawkBurstFeedbackPending) {
+                hawkBurstFeedbackPending = false;
+            }
+        }
 
         // --- Fisica bomba nuclear ---
         AttackUpdateNuke(dt,
                          &nukeBomb, buildings, &score,
+                         &comboHitStreak, &comboLevel, &comboTimer,
                          nukeTrails, &nukeTrailTimer, &nukeAlertTimer,
                          &nukeCoverAlpha, &worldWipedByNuke,
                          &nukeRainActive, &nukeRainTimer, &nukeRainSpawnTimer,
@@ -755,7 +863,11 @@ void GameRun(void) {
             for (int i = 0; i < MAX_PARTICLES; i++) particles[i].active = false;
             for (int i = 0; i < MAX_SMOKE; i++) smokeArr[i].active = false;
             for (int i = 0; i < MAX_NUKE_TRAILS; i++) nukeTrails[i].active = false;
-            bomb.active = false;
+            ResetBombSlots(bombs);
+            hawkBurstPending = 0;
+            hawkBurstTimer = 0.0f;
+            hawkBurstFeedbackPending = false;
+            comboHitStreak = 0; comboLevel = 0; comboTimer = 0.0f;
             for (int i = 0; i < MAX_BUILDINGS; i++) {
                 if (!buildings[i].active) {
                     InitBuilding(&buildings[i], buildings, i, crazyColors, numCrazyColors);
@@ -855,7 +967,9 @@ void GameRun(void) {
                         AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                       airplanePos, laserDir,
                                                       &buildings[i],
-                                                      &score, &laserAlpha, &goldenHitAlpha,
+                                                      &score,
+                                                      &comboHitStreak, &comboLevel, &comboTimer,
+                                                      &laserAlpha, &goldenHitAlpha,
                                                       particles,
                                                       crazyColors, numCrazyColors,
                                                       fxExplode, fxGoldenHit);
@@ -866,14 +980,65 @@ void GameRun(void) {
                     AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                   droneFrontPos, forward,
                                                   &buildings[i],
-                                                  &score, &laserAlpha, &goldenHitAlpha,
+                                                  &score,
+                                                  &comboHitStreak, &comboLevel, &comboTimer,
+                                                  &laserAlpha, &goldenHitAlpha,
                                                   particles,
                                                   crazyColors, numCrazyColors,
                                                   fxExplode, fxGoldenHit);
                     AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                   droneBackPos, back,
                                                   &buildings[i],
-                                                  &score, &laserAlpha, &goldenHitAlpha,
+                                                  &score,
+                                                  &comboHitStreak, &comboLevel, &comboTimer,
+                                                  &laserAlpha, &goldenHitAlpha,
+                                                  particles,
+                                                  crazyColors, numCrazyColors,
+                                                  fxExplode, fxGoldenHit);
+                } else if (activeVehicle == VEHICLE_HAWK) {
+                    Vector3 gunFRInnerLocal = (Vector3){ 1.75f, -0.04f, -4.75f };
+                    Vector3 gunFROuterLocal = (Vector3){ 4.55f, -0.06f, -3.25f };
+                    Vector3 gunFLInnerLocal = (Vector3){ -1.75f, -0.04f, -4.75f };
+                    Vector3 gunFLOuterLocal = (Vector3){ -4.55f, -0.06f, -3.25f };
+
+                    Vector3 gunFRInnerPos = Vector3Add(airplanePos, Vector3Transform(gunFRInnerLocal, rotation));
+                    Vector3 gunFROuterPos = Vector3Add(airplanePos, Vector3Transform(gunFROuterLocal, rotation));
+                    Vector3 gunFLInnerPos = Vector3Add(airplanePos, Vector3Transform(gunFLInnerLocal, rotation));
+                    Vector3 gunFLOuterPos = Vector3Add(airplanePos, Vector3Transform(gunFLOuterLocal, rotation));
+
+                    AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                  gunFRInnerPos, forward,
+                                                  &buildings[i],
+                                                  &score,
+                                                  &comboHitStreak, &comboLevel, &comboTimer,
+                                                  &laserAlpha, &goldenHitAlpha,
+                                                  particles,
+                                                  crazyColors, numCrazyColors,
+                                                  fxExplode, fxGoldenHit);
+                    AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                  gunFROuterPos, forward,
+                                                  &buildings[i],
+                                                  &score,
+                                                  &comboHitStreak, &comboLevel, &comboTimer,
+                                                  &laserAlpha, &goldenHitAlpha,
+                                                  particles,
+                                                  crazyColors, numCrazyColors,
+                                                  fxExplode, fxGoldenHit);
+                    AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                  gunFLInnerPos, forward,
+                                                  &buildings[i],
+                                                  &score,
+                                                  &comboHitStreak, &comboLevel, &comboTimer,
+                                                  &laserAlpha, &goldenHitAlpha,
+                                                  particles,
+                                                  crazyColors, numCrazyColors,
+                                                  fxExplode, fxGoldenHit);
+                    AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                  gunFLOuterPos, forward,
+                                                  &buildings[i],
+                                                  &score,
+                                                  &comboHitStreak, &comboLevel, &comboTimer,
+                                                  &laserAlpha, &goldenHitAlpha,
                                                   particles,
                                                   crazyColors, numCrazyColors,
                                                   fxExplode, fxGoldenHit);
@@ -881,7 +1046,9 @@ void GameRun(void) {
                     AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                   airplanePos, forward,
                                                   &buildings[i],
-                                                  &score, &laserAlpha, &goldenHitAlpha,
+                                                  &score,
+                                                  &comboHitStreak, &comboLevel, &comboTimer,
+                                                  &laserAlpha, &goldenHitAlpha,
                                                   particles,
                                                   crazyColors, numCrazyColors,
                                                   fxExplode, fxGoldenHit);
@@ -1075,7 +1242,9 @@ void GameRun(void) {
                     rlPopMatrix();
                 }
 
-                if (bomb.active) DrawSphere(bomb.position, 1.5f, DARKGRAY);
+                for (int i = 0; i < MAX_BOMBS; i++) {
+                    if (bombs[i].active) DrawSphere(bombs[i].position, 1.5f, DARKGRAY);
+                }
 
                 //veiculo do jogador
                 if (!firstPersonMode) {
@@ -1121,6 +1290,21 @@ void GameRun(void) {
                         DrawVehicleLaserBeam(lFL, Vector3Add(lFL, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
                         DrawVehicleLaserBeam(lBR, Vector3Add(lBR, Vector3Scale(back, LASER_LENGTH)), activeVehicle);
                         DrawVehicleLaserBeam(lBL, Vector3Add(lBL, Vector3Scale(back, LASER_LENGTH)), activeVehicle);
+                    } else if (activeVehicle == VEHICLE_HAWK) {
+                        Vector3 gunFRInnerLocal = (Vector3){ 1.75f, -0.04f, -4.75f };
+                        Vector3 gunFROuterLocal = (Vector3){ 4.55f, -0.06f, -3.25f };
+                        Vector3 gunFLInnerLocal = (Vector3){ -1.75f, -0.04f, -4.75f };
+                        Vector3 gunFLOuterLocal = (Vector3){ -4.55f, -0.06f, -3.25f };
+
+                        Vector3 lFRInner = Vector3Add(airplanePos, Vector3Transform(gunFRInnerLocal, rotation));
+                        Vector3 lFROuter = Vector3Add(airplanePos, Vector3Transform(gunFROuterLocal, rotation));
+                        Vector3 lFLInner = Vector3Add(airplanePos, Vector3Transform(gunFLInnerLocal, rotation));
+                        Vector3 lFLOuter = Vector3Add(airplanePos, Vector3Transform(gunFLOuterLocal, rotation));
+
+                        DrawVehicleLaserBeam(lFRInner, Vector3Add(lFRInner, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
+                        DrawVehicleLaserBeam(lFROuter, Vector3Add(lFROuter, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
+                        DrawVehicleLaserBeam(lFLInner, Vector3Add(lFLInner, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
+                        DrawVehicleLaserBeam(lFLOuter, Vector3Add(lFLOuter, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
                     } else {
                         // Aviões/Helicóptero/Jet disparam para a frente
                         Vector3 gunRLocal = (Vector3){ 2.5f, -0.05f, 0.0f };
@@ -1153,7 +1337,8 @@ void GameRun(void) {
                               nukeBomb.used, machineGunCooldown,
                               machineGunActive, spaceHeldTime,
                               nukeBomb.active, nukeBomb.waitingImpactSound,
-                              nukeAlertTimer, nukeRainActive);
+                              nukeAlertTimer, nukeRainActive,
+                              comboLevel, comboHitStreak);
 
             if (firstPersonMode) UIDrawCrosshair();
 

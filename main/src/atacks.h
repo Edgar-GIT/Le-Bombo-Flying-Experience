@@ -25,22 +25,27 @@ void AttackTrySpawnNuke(bool triggerPressed,
                         float* nukeAlertTimer, float* spFadeAlpha,
                         Sound fxFail);
 
-void AttackUpdateBomb(float dt,
+bool AttackUpdateBomb(float dt,
                       Bomb* bomb, Building* buildings, int* score, float* scaredAlpha,
                       Particle* particles,
                       Color* crazyColors, int numColors,
+                      int* comboHitStreak, int* comboLevel, float* comboTimer,
+                      bool triggerBlastFeedback,
                       Sound fxKaboom);
 
 void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
                                    Vector3 airplanePos, Vector3 forward,
                                    Building* building,
-                                   int* score, float* laserAlpha, float* goldenHitAlpha,
+                                   int* score,
+                                   int* comboHitStreak, int* comboLevel, float* comboTimer,
+                                   float* laserAlpha, float* goldenHitAlpha,
                                    Particle* particles,
                                    Color* crazyColors, int numColors,
                                    Sound fxExplode, Sound fxGoldenHit);
 
 void AttackUpdateNuke(float dt,
                       NukeBomb* nukeBomb, Building* buildings, int* score,
+                      int* comboHitStreak, int* comboLevel, float* comboTimer,
                       NukeTrail* nukeTrails, float* nukeTrailTimer, float* nukeAlertTimer,
                       float* nukeCoverAlpha, bool* worldWipedByNuke,
                       bool* nukeRainActive, float* nukeRainTimer, float* nukeRainSpawnTimer,
