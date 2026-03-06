@@ -54,7 +54,7 @@
 #define NUKE_MODEL_SCALE        10.2f
 #define NUKE_HIT_RADIUS         15.0f
 #define NUKE_SCORE_BONUS    1000000
-#define NUKE_RAIN_DURATION      45.0f
+#define NUKE_RAIN_DURATION      25.0f
 #define NUKE_RAIN_SPAWN_INTERVAL 0.03f
 #define MAX_NUKE_RAIN_BLOCKS     820
 #define KIRK_MAX_PLAY_TIME      12.0f

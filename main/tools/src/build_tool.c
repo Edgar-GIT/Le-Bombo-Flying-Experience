@@ -39,6 +39,23 @@ static int run_cmd(const char *cmd) {
     return system(cmd);
 }
 
+static int has_zig(void) {
+#if defined(_WIN32)
+    int rc = system("zig version >NUL 2>&1");
+#else
+    int rc = system("zig version >/dev/null 2>&1");
+#endif
+    return rc == 0;
+}
+
+static int run_zig_pipeline(const char *mode) {
+    char cmd[4096];
+    snprintf(cmd, sizeof(cmd),
+             "zig run main/GameEngine/src/zig/main.zig -- %s",
+             mode);
+    return run_cmd(cmd);
+}
+
 static int build_game(const char *platform) {
     char cmd[4096];
     char out_file[512];
@@ -153,6 +170,7 @@ int main(int argc, char **argv) {
     int build_game_flag = 1;
     int build_preview_flag = 1;
     int run_preview = 0;
+    int no_zig = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--game") == 0) {
@@ -166,20 +184,42 @@ int main(int argc, char **argv) {
             run_preview = 1;
             build_game_flag = 0;
             build_preview_flag = 1;
+        } else if (strcmp(argv[i], "--no-zig") == 0) {
+            no_zig = 1;
         } else if (strcmp(argv[i], "--help") == 0) {
-            printf("Usage: build_tool [--all|--game|--preview|--run-preview]\n");
+            printf("Usage: build_tool [--all|--game|--preview|--run-preview|--no-zig]\n");
             return 0;
         }
     }
 
     int rc = 0;
+    int zig_ok = 0;
+    if (!no_zig && has_zig()) {
+        const char *zig_mode = "--all";
+        if (build_game_flag && !build_preview_flag) zig_mode = "--game";
+        if (!build_game_flag && build_preview_flag) zig_mode = "--preview";
+        rc = run_zig_pipeline(zig_mode);
+        if (rc == 0) {
+            zig_ok = 1;
+            printf("[build_tool] Zig pipeline complete.\n");
+        } else {
+            printf("[build_tool] Zig pipeline failed, falling back to C compiler build.\n");
+        }
+    } else if (!no_zig) {
+        printf("[build_tool] Zig not found, using C compiler build.\n");
+    }
+
     if (build_game_flag) {
-        rc = build_game(platform);
-        if (rc != 0) return rc;
+        if (!zig_ok) {
+            rc = build_game(platform);
+            if (rc != 0) return rc;
+        }
     }
     if (build_preview_flag) {
-        rc = build_previewer(platform);
-        if (rc != 0) return rc;
+        if (!zig_ok) {
+            rc = build_previewer(platform);
+            if (rc != 0) return rc;
+        }
     }
 
     if (run_preview) {

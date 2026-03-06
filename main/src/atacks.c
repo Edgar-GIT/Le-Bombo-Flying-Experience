@@ -1,5 +1,72 @@
 #include "atacks.h"
 
+typedef enum {
+    DEFERRED_FX_EXPLOSION = 0,
+    DEFERRED_FX_NUKE
+} DeferredFxType;
+
+typedef struct {
+    Vector3 position;
+    unsigned char type;
+    bool active;
+} DeferredFx;
+
+#define MAX_DEFERRED_FX 256
+
+static DeferredFx gDeferredFx[MAX_DEFERRED_FX] = { 0 };
+static bool gOverlaySuppression = false;
+static unsigned short gDeferredFxCursor = 0;
+
+//guarda efeitos pesados para processar quando o overlay sair
+static void QueueDeferredFx(Vector3 position, unsigned char type) {
+    for (int i = 0; i < MAX_DEFERRED_FX; i++) {
+        if (!gDeferredFx[i].active) {
+            gDeferredFx[i].active = true;
+            gDeferredFx[i].position = position;
+            gDeferredFx[i].type = type;
+            return;
+        }
+    }
+
+    int replace = (int)(gDeferredFxCursor % MAX_DEFERRED_FX);
+    gDeferredFx[replace].active = true;
+    gDeferredFx[replace].position = position;
+    gDeferredFx[replace].type = type;
+    gDeferredFxCursor++;
+}
+
+//ativa/desativa supressao de efeitos quando overlay tapa o gameplay
+void AttackSetOverlaySuppression(bool suppress) {
+    gOverlaySuppression = suppress;
+}
+
+//limpa fila de efeitos diferidos em resets de jogo/menu
+void AttackClearDeferredFx(void) {
+    for (int i = 0; i < MAX_DEFERRED_FX; i++) {
+        gDeferredFx[i].active = false;
+    }
+    gDeferredFxCursor = 0;
+}
+
+//descarrega efeitos diferidos por lotes para evitar picos
+void AttackFlushDeferredFx(Particle* particles, Color* crazyColors, int numColors, int maxFxPerFrame) {
+    if (gOverlaySuppression || maxFxPerFrame <= 0) return;
+
+    int flushed = 0;
+    for (int i = 0; i < MAX_DEFERRED_FX; i++) {
+        if (!gDeferredFx[i].active) continue;
+
+        if (gDeferredFx[i].type == DEFERRED_FX_NUKE) {
+            SpawnNukeExplosion(gDeferredFx[i].position, particles);
+        } else {
+            SpawnExplosion(gDeferredFx[i].position, particles, crazyColors, numColors);
+        }
+
+        gDeferredFx[i].active = false;
+        flushed++;
+        if (flushed >= maxFxPerFrame) break;
+    }
+}
 
 //desenha bomba nuclear em queda
 void DrawNukeBombModel(float spinAngle) {
@@ -230,7 +297,11 @@ bool AttackUpdateBomb(float dt,
         StopSound(fxKaboom);
         PlaySound(fxKaboom);
     }
-    SpawnExplosion(bomb->position, particles, crazyColors, numColors);
+    if (gOverlaySuppression) {
+        QueueDeferredFx(bomb->position, DEFERRED_FX_EXPLOSION);
+    } else {
+        SpawnExplosion(bomb->position, particles, crazyColors, numColors);
+    }
 
     for (int i = 0; i < MAX_BUILDINGS; i++) {
         if (buildings[i].active &&
@@ -285,7 +356,11 @@ void AttackTryLaserBlastOnBuilding(bool shooting, VehicleType vehicle,
         PlaySound(fxExplode);
     }
 
-    SpawnExplosion(laserHit.point, particles, crazyColors, numColors);
+    if (gOverlaySuppression) {
+        QueueDeferredFx(laserHit.point, DEFERRED_FX_EXPLOSION);
+    } else {
+        SpawnExplosion(laserHit.point, particles, crazyColors, numColors);
+    }
 }
 
 
@@ -385,7 +460,11 @@ void AttackUpdateNuke(float dt,
         nukeTrails[i].active = false;
     }
 
-    SpawnNukeExplosion(nukeBomb->position, particles);
+    if (gOverlaySuppression) {
+        QueueDeferredFx(nukeBomb->position, DEFERRED_FX_NUKE);
+    } else {
+        SpawnNukeExplosion(nukeBomb->position, particles);
+    }
     for (int i = 0; i < MAX_BUILDINGS; i++) {
         if (buildings[i].active) {
             buildings[i].active = false;

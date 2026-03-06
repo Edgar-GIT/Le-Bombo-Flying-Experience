@@ -4,6 +4,13 @@
 #include "atacks.h"
 #include "screens.h"
 
+#if defined(LBFE_USE_ZIG_RUNTIME)
+void LBFE_ZigBeginFrame(float dt_seconds, float overlay_alpha);
+unsigned char LBFE_ZigOverlayBlocksFx(void);
+unsigned char LBFE_ZigFxFlushBudget(void);
+void LBFE_ZigResetRuntime(void);
+#endif
+
 bool FootprintsOverlap(Vector3 posA, Vector3 sizeA, Vector3 posB, Vector3 sizeB) {
     float aMinX = posA.x - sizeA.x * 0.5f;
     float aMaxX = posA.x + sizeA.x * 0.5f;
@@ -33,13 +40,71 @@ bool OverlapsAnyBuilding(Vector3 pos, Vector3 size, Building* buildings, int sel
 
 //cria nuvem
 void InitCloud(Cloud* c, Color* crazyColors, int numColors) {
+    (void)crazyColors;
+    (void)numColors;
+
     c->position = (Vector3){
         (float)GetRandomValue(-(int)WORLD_HALF_SIZE, (int)WORLD_HALF_SIZE),
         (float)GetRandomValue((int)CLOUD_MIN_Y, (int)CLOUD_MAX_Y),
         (float)GetRandomValue(-(int)WORLD_HALF_SIZE, (int)WORLD_HALF_SIZE)
     };
-    c->radius = (float)GetRandomValue(12, 38);
-    c->color  = crazyColors[GetRandomValue(0, numColors - 1)];
+    c->radius = (float)GetRandomValue(12, 28);
+    unsigned char shade = (unsigned char)GetRandomValue(165, 215);
+    c->color = (Color){ shade, shade, shade, 255 };
+}
+
+//calcula intensidade global de overlays que tapam o gameplay
+static float GetOverlayFxAlpha(float laserAlpha, float goldenHitAlpha, float scaredAlpha,
+                               float kirkAlpha, float dimaAlpha, float epAlpha,
+                               float chickenAlpha, float nkAlpha, float machineAlpha,
+                               float spFadeAlpha, float nukeCoverAlpha) {
+    float maxAlpha = laserAlpha;
+    if (goldenHitAlpha > maxAlpha) maxAlpha = goldenHitAlpha;
+    if (scaredAlpha > maxAlpha) maxAlpha = scaredAlpha;
+    if (kirkAlpha > maxAlpha) maxAlpha = kirkAlpha;
+    if (dimaAlpha > maxAlpha) maxAlpha = dimaAlpha;
+    if (epAlpha > maxAlpha) maxAlpha = epAlpha;
+    if (chickenAlpha > maxAlpha) maxAlpha = chickenAlpha;
+    if (nkAlpha > maxAlpha) maxAlpha = nkAlpha;
+    if (machineAlpha > maxAlpha) maxAlpha = machineAlpha;
+    if (spFadeAlpha > maxAlpha) maxAlpha = spFadeAlpha;
+    if (nukeCoverAlpha > maxAlpha) maxAlpha = nukeCoverAlpha;
+    return maxAlpha;
+}
+
+//deteta bloqueio de fx por overlay usando runtime zig quando disponivel
+static bool ResolveOverlayFxBlock(float dtSeconds,
+                                  float laserAlpha, float goldenHitAlpha, float scaredAlpha,
+                                  float kirkAlpha, float dimaAlpha, float epAlpha,
+                                  float chickenAlpha, float nkAlpha, float machineAlpha,
+                                  float spFadeAlpha, float nukeCoverAlpha) {
+    float overlayAlpha = GetOverlayFxAlpha(laserAlpha, goldenHitAlpha, scaredAlpha,
+                                           kirkAlpha, dimaAlpha, epAlpha,
+                                           chickenAlpha, nkAlpha, machineAlpha,
+                                           spFadeAlpha, nukeCoverAlpha);
+#if defined(LBFE_USE_ZIG_RUNTIME)
+    LBFE_ZigBeginFrame(dtSeconds, overlayAlpha);
+    return LBFE_ZigOverlayBlocksFx() != 0;
+#else
+    (void)dtSeconds;
+    return overlayAlpha > 0.55f;
+#endif
+}
+
+//devolve budget de flush de efeitos com base no runtime zig
+static int ResolveFxFlushBudget(void) {
+#if defined(LBFE_USE_ZIG_RUNTIME)
+    return (int)LBFE_ZigFxFlushBudget();
+#else
+    return 2;
+#endif
+}
+
+//reseta estado zig em transicoes grandes de jogo/menu
+static void ResetZigRuntimeState(void) {
+#if defined(LBFE_USE_ZIG_RUNTIME)
+    LBFE_ZigResetRuntime();
+#endif
 }
 
 //janelas
@@ -467,6 +532,9 @@ void GameRun(void) {
                         nukeTrailTimer = 0.0f; nukeAlertTimer = 0.0f;
                         nukeRainTimer = 0.0f; nukeRainSpawnTimer = 0.0f;
                         ResetBombSlots(bombs);
+                        AttackClearDeferredFx();
+                        AttackSetOverlaySuppression(false);
+                        ResetZigRuntimeState();
                         hawkBurstPending = 0; hawkBurstTimer = 0.0f;
                         hawkBurstFeedbackPending = false;
                         comboHitStreak = 0; comboLevel = 0; comboTimer = 0.0f;
@@ -530,6 +598,9 @@ void GameRun(void) {
                 nukeBomb.active = false;
                 nukeBomb.waitingImpactSound = false;
                 nukeRainActive = false;
+                AttackClearDeferredFx();
+                AttackSetOverlaySuppression(false);
+                ResetZigRuntimeState();
                 hawkBurstPending = 0;
                 hawkBurstTimer = 0.0f;
                 hawkBurstFeedbackPending = false;
@@ -555,6 +626,9 @@ void GameRun(void) {
                 nukeTrailTimer = 0.0f; nukeAlertTimer = 0.0f;
                 nukeRainTimer = 0.0f; nukeRainSpawnTimer = 0.0f;
                 ResetBombSlots(bombs);
+                AttackClearDeferredFx();
+                AttackSetOverlaySuppression(false);
+                ResetZigRuntimeState();
                 hawkBurstPending = 0; hawkBurstTimer = 0.0f;
                 hawkBurstFeedbackPending = false;
                 comboHitStreak = 0; comboLevel = 0; comboTimer = 0.0f;
@@ -610,6 +684,9 @@ void GameRun(void) {
             nukeBomb.active = false;
             nukeBomb.waitingImpactSound = false;
             nukeRainActive = false;
+            AttackClearDeferredFx();
+            AttackSetOverlaySuppression(false);
+            ResetZigRuntimeState();
             hawkBurstPending = 0;
             hawkBurstTimer = 0.0f;
             hawkBurstFeedbackPending = false;
@@ -701,36 +778,52 @@ void GameRun(void) {
         }
         camera.up = up;
 
+        //deteta overlay forte para suprimir fx que o jogador nao ve
+        bool overlayBlocksFx = ResolveOverlayFxBlock(dt,
+                                                     laserAlpha, goldenHitAlpha, scaredAlpha,
+                                                     kirkAlpha, dimaAlpha, epAlpha,
+                                                     chickenAlpha, nkAlpha, machineAlpha,
+                                                     spFadeAlpha, nukeCoverAlpha);
+        AttackSetOverlaySuppression(overlayBlocksFx);
+
+        //solta alguns fx em fila quando o overlay sai para evitar picos
+        if (!overlayBlocksFx) {
+            AttackFlushDeferredFx(particles, crazyColors, numCrazyColors, ResolveFxFlushBudget());
+        }
+
         // --- Fumo ---
-        smokeTimer += dt;
-        if (smokeTimer >= SMOKE_SPAWN_INTERVAL &&
-            activeVehicle != VEHICLE_UFO &&
-            activeVehicle != VEHICLE_DRONE && activeVehicle != VEHICLE_HAWK) {
-            smokeTimer = 0.0f;
-            for (int i = 0; i < MAX_SMOKE; i++) {
-                if (!smokeArr[i].active) {
-                    // Fumo sai da cauda
-                    Vector3 tailLocal = (Vector3){ 0.0f, 0.0f, 3.5f };
-                    if (activeVehicle == VEHICLE_HELICOPTER) {
-                        tailLocal = (Vector3){ 0.0f, 0.4f, 5.2f };
-                    } else if (activeVehicle == VEHICLE_JET) {
-                        tailLocal = (Vector3){ 0.0f, 0.0f, 6.8f };
+        if (!overlayBlocksFx) {
+            smokeTimer += dt;
+            if (smokeTimer >= SMOKE_SPAWN_INTERVAL &&
+                activeVehicle != VEHICLE_UFO &&
+                activeVehicle != VEHICLE_DRONE && activeVehicle != VEHICLE_HAWK) {
+                smokeTimer = 0.0f;
+                for (int i = 0; i < MAX_SMOKE; i++) {
+                    if (!smokeArr[i].active) {
+                        //fumo sai da cauda
+                        Vector3 tailLocal = (Vector3){ 0.0f, 0.0f, 3.5f };
+                        if (activeVehicle == VEHICLE_HELICOPTER) {
+                            tailLocal = (Vector3){ 0.0f, 0.4f, 5.2f };
+                        } else if (activeVehicle == VEHICLE_JET) {
+                            tailLocal = (Vector3){ 0.0f, 0.0f, 6.8f };
+                        }
+                        Vector3 tail = Vector3Transform(tailLocal, rotation);
+                        smokeArr[i].position = Vector3Add(airplanePos, tail);
+                        smokeArr[i].lifetime = SMOKE_LIFETIME;
+                        smokeArr[i].maxLife  = SMOKE_LIFETIME;
+                        smokeArr[i].size     = (float)GetRandomValue(8, 18) / 10.0f;
+                        smokeArr[i].active   = true;
+                        break;
                     }
-                    Vector3 tail = Vector3Transform(tailLocal, rotation);
-                    smokeArr[i].position = Vector3Add(airplanePos, tail);
-                    smokeArr[i].lifetime = SMOKE_LIFETIME;
-                    smokeArr[i].maxLife  = SMOKE_LIFETIME;
-                    smokeArr[i].size     = (float)GetRandomValue(8, 18) / 10.0f;
-                    smokeArr[i].active   = true;
-                    break;
                 }
             }
-        }
-        for (int i = 0; i < MAX_SMOKE; i++) {
-            if (smokeArr[i].active) {
-                smokeArr[i].lifetime -= dt;
-                smokeArr[i].size     += dt * SMOKE_EXPAND_SPEED;
-                if (smokeArr[i].lifetime <= 0) smokeArr[i].active = false;
+
+            for (int i = 0; i < MAX_SMOKE; i++) {
+                if (smokeArr[i].active) {
+                    smokeArr[i].lifetime -= dt;
+                    smokeArr[i].size     += dt * SMOKE_EXPAND_SPEED;
+                    if (smokeArr[i].lifetime <= 0) smokeArr[i].active = false;
+                }
             }
         }
 
@@ -875,7 +968,9 @@ void GameRun(void) {
             }
         }
 
-        AttackUpdateRainBlocks(dt, rainBlocks);
+        if (!overlayBlocksFx) {
+            AttackUpdateRainBlocks(dt, rainBlocks);
+        }
 
         colorCycleTimer += dt * 0.5f;
 
@@ -1094,25 +1189,29 @@ void GameRun(void) {
         }
 
         // --- Fisica do rasto da bomba nuclear ---
-        AttackUpdateNukeTrails(dt, nukeTrails);
+        if (!overlayBlocksFx) {
+            AttackUpdateNukeTrails(dt, nukeTrails);
+        }
 
         // --- Fisica particulas ---
-        for (int i = 0; i < MAX_PARTICLES; i++) {
-            if (particles[i].active) {
-                particles[i].position = Vector3Add(particles[i].position, particles[i].velocity);
+        if (!overlayBlocksFx) {
+            for (int i = 0; i < MAX_PARTICLES; i++) {
+                if (particles[i].active) {
+                    particles[i].position = Vector3Add(particles[i].position, particles[i].velocity);
 
-                // Destroços caem mais devagar; faiscas e bolas de fogo caem normal
-                float grav = particles[i].isDebris ? 3.5f : 8.0f;
-                particles[i].velocity.y -= grav * dt;
+                    //destroços caem mais devagar e as outras particulas caem normal
+                    float grav = particles[i].isDebris ? 3.5f : 8.0f;
+                    particles[i].velocity.y -= grav * dt;
 
-                if (particles[i].position.y < 0) {
-                    particles[i].position.y  = 0;
-                    particles[i].velocity.y *= -0.3f;
-                    particles[i].velocity.x *= 0.75f;
-                    particles[i].velocity.z *= 0.75f;
+                    if (particles[i].position.y < 0) {
+                        particles[i].position.y  = 0;
+                        particles[i].velocity.y *= -0.3f;
+                        particles[i].velocity.x *= 0.75f;
+                        particles[i].velocity.z *= 0.75f;
+                    }
+                    particles[i].lifetime -= dt;
+                    if (particles[i].lifetime <= 0) particles[i].active = false;
                 }
-                particles[i].lifetime -= dt;
-                if (particles[i].lifetime <= 0) particles[i].active = false;
             }
         }
 
@@ -1162,9 +1261,17 @@ void GameRun(void) {
                     DrawGrid(GRID_COUNT, GRID_CELL_SIZE);
                 rlPopMatrix();
 
-                for (int i = 0; i < MAX_CLOUDS; i++)
-                    DrawSphere(clouds[i].position, clouds[i].radius,
-                               Fade(clouds[i].color, 0.8f));
+                //nuvens simples: 2 esferas cinzentas por nuvem
+                for (int i = 0; i < MAX_CLOUDS; i++) {
+                    float r = clouds[i].radius;
+                    DrawSphere(clouds[i].position, r, Fade(clouds[i].color, 0.80f));
+                    Vector3 puffPos = {
+                        clouds[i].position.x + r * 0.62f,
+                        clouds[i].position.y + r * 0.18f,
+                        clouds[i].position.z + r * 0.22f
+                    };
+                    DrawSphere(puffPos, r * 0.68f, Fade(clouds[i].color, 0.72f));
+                }
 
                 for (int i = 0; i < MAX_BUILDINGS; i++) {
                     if (buildings[i].active) {
@@ -1176,59 +1283,67 @@ void GameRun(void) {
                     }
                 }
 
-                for (int i = 0; i < MAX_NUKE_RAIN_BLOCKS; i++) {
-                    if (rainBlocks[i].active) {
-                        DrawCubeV(rainBlocks[i].position, rainBlocks[i].size, rainBlocks[i].color);
-                        DrawCubeWiresV(rainBlocks[i].position, rainBlocks[i].size, BLACK);
-                    }
-                }
-
-                // Particulas de explosão
-                for (int i = 0; i < MAX_PARTICLES; i++) {
-                    if (particles[i].active) {
-                        float lr = particles[i].lifetime / particles[i].maxLifetime;
-
-                        if (particles[i].isFireball) {
-                            // Bolas de fogo: esferas que encolhem e ficam transparentes
-                            float sz = particles[i].size * lr;
-                            if (sz < 0.1f) sz = 0.1f;
-                            Color c = particles[i].color;
-                            c.a = (unsigned char)(lr * 220);
-                            DrawSphere(particles[i].position, sz, c);
-                        } else if (particles[i].isDebris) {
-                            // Destroços: cubos que mantem tamanho mas ficam mais escuros
-                            DrawCube(particles[i].position,
-                                     particles[i].size,
-                                     particles[i].size,
-                                     particles[i].size,
-                                     particles[i].color);
-                        } else {
-                            // Faiscas: cubos pequenos que encolhem e ficam transparentes
-                            float sz = particles[i].size * lr;
-                            if (sz < 0.05f) sz = 0.05f;
-                            Color c = particles[i].color;
-                            c.a = (unsigned char)(lr * 255);
-                            DrawCube(particles[i].position, sz, sz, sz, c);
+                if (!overlayBlocksFx) {
+                    for (int i = 0; i < MAX_NUKE_RAIN_BLOCKS; i++) {
+                        if (rainBlocks[i].active) {
+                            DrawCubeV(rainBlocks[i].position, rainBlocks[i].size, rainBlocks[i].color);
+                            DrawCubeWiresV(rainBlocks[i].position, rainBlocks[i].size, BLACK);
                         }
                     }
                 }
 
-                for (int i = 0; i < MAX_SMOKE; i++) {
-                    if (smokeArr[i].active) {
-                        float a = smokeArr[i].lifetime / smokeArr[i].maxLife;
-                        DrawSphere(smokeArr[i].position, smokeArr[i].size,
-                                   Fade((Color){ 180,180,180,255 }, a * 0.6f));
+                // Particulas de explosão
+                if (!overlayBlocksFx) {
+                    for (int i = 0; i < MAX_PARTICLES; i++) {
+                        if (particles[i].active) {
+                            float lr = particles[i].lifetime / particles[i].maxLifetime;
+
+                            if (particles[i].isFireball) {
+                                // Bolas de fogo: esferas que encolhem e ficam transparentes
+                                float sz = particles[i].size * lr;
+                                if (sz < 0.1f) sz = 0.1f;
+                                Color c = particles[i].color;
+                                c.a = (unsigned char)(lr * 220);
+                                DrawSphere(particles[i].position, sz, c);
+                            } else if (particles[i].isDebris) {
+                                // Destroços: cubos que mantem tamanho mas ficam mais escuros
+                                DrawCube(particles[i].position,
+                                         particles[i].size,
+                                         particles[i].size,
+                                         particles[i].size,
+                                         particles[i].color);
+                            } else {
+                                // Faiscas: cubos pequenos que encolhem e ficam transparentes
+                                float sz = particles[i].size * lr;
+                                if (sz < 0.05f) sz = 0.05f;
+                                Color c = particles[i].color;
+                                c.a = (unsigned char)(lr * 255);
+                                DrawCube(particles[i].position, sz, sz, sz, c);
+                            }
+                        }
+                    }
+                }
+
+                if (!overlayBlocksFx) {
+                    for (int i = 0; i < MAX_SMOKE; i++) {
+                        if (smokeArr[i].active) {
+                            float a = smokeArr[i].lifetime / smokeArr[i].maxLife;
+                            DrawSphere(smokeArr[i].position, smokeArr[i].size,
+                                       Fade((Color){ 180,180,180,255 }, a * 0.6f));
+                        }
                     }
                 }
 
                 // Rasto da bomba nuclear
-                for (int i = 0; i < MAX_NUKE_TRAILS; i++) {
-                    if (nukeTrails[i].active) {
-                        float a = nukeTrails[i].lifetime / nukeTrails[i].maxLife;
-                        DrawSphere(nukeTrails[i].position, nukeTrails[i].size,
-                                   Fade((Color){ 255, 170, 70, 255 }, a * 0.7f));
-                        DrawSphere(nukeTrails[i].position, nukeTrails[i].size * 0.45f,
-                                   Fade((Color){ 255, 240, 200, 255 }, a * 0.85f));
+                if (!overlayBlocksFx) {
+                    for (int i = 0; i < MAX_NUKE_TRAILS; i++) {
+                        if (nukeTrails[i].active) {
+                            float a = nukeTrails[i].lifetime / nukeTrails[i].maxLife;
+                            DrawSphere(nukeTrails[i].position, nukeTrails[i].size,
+                                       Fade((Color){ 255, 170, 70, 255 }, a * 0.7f));
+                            DrawSphere(nukeTrails[i].position, nukeTrails[i].size * 0.45f,
+                                       Fade((Color){ 255, 240, 200, 255 }, a * 0.85f));
+                        }
                     }
                 }
 
@@ -1257,7 +1372,7 @@ void GameRun(void) {
                 }
 
                 // Lasers dos canhoes
-                if (shooting) {
+                if (shooting && !overlayBlocksFx) {
                     if (activeVehicle == VEHICLE_UFO) {
                         // UFO dispara em 12 direçoes horizontais em circulo
                         for (int dir = 0; dir < 12; dir++) {

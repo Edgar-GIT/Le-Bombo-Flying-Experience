@@ -4,6 +4,9 @@
 #include "config.h"
 
 void DrawNukeBombModel(float spinAngle);
+void AttackSetOverlaySuppression(bool suppress);
+void AttackFlushDeferredFx(Particle* particles, Color* crazyColors, int numColors, int maxFxPerFrame);
+void AttackClearDeferredFx(void);
 
 bool AttackUpdateMachineGun(float dt,
                             float* spaceHeldTime, bool* machineGunActive,
