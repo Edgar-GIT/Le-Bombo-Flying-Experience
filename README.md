@@ -191,3 +191,27 @@ Goal:
 - Preview it immediately
 - Save/export it
 - Load it in-game from the builder pipeline
+
+### Compile The Game Engine
+
+From project root:
+
+```bash
+zig run main/GameEngine/src/zig/engine_build.zig
+```
+
+From inside `main/GameEngine/src/zig`:
+
+```bash
+zig run engine_build.zig
+```
+
+Generated binary:
+- `main/GameEngine/src/GameEngine` (Linux/macOS)
+- `main/GameEngine/src/GameEngine.exe` (Windows)
+
+Manual compile command (Linux):
+
+```bash
+g++ -std=c++17 -O3 main/GameEngine/src/main/main.cpp -I main/GameEngine/src/include -o main/GameEngine/src/GameEngine -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+```
