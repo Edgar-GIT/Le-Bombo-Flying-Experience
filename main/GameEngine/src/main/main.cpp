@@ -1,6 +1,7 @@
-#include "main.hpp"
+#include "../include/main.hpp"
 
 #include <chrono>
+#include "raylib.h"
 
 EngineBase::EngineBase() : running_(false), initialized_(false) {}
 
@@ -62,3 +63,39 @@ void EngineBase::OnUpdate(float) {}
 void EngineBase::OnRender() {}
 
 void EngineBase::OnShutdown() {}
+
+//app base da game engine com janela maximizada em modo windowed
+class GameEngineApp : public EngineBase {
+protected:
+    bool OnInit() override {
+        SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
+        InitWindow(1280, 720, "Le Bombo Game Engine");
+        MaximizeWindow();
+        SetTargetFPS(60);
+        return true;
+    }
+
+    void OnUpdate(float) override {
+        if (WindowShouldClose()) {
+            RequestQuit();
+        }
+    }
+
+    void OnRender() override {
+        BeginDrawing();
+            ClearBackground(BLACK);
+        EndDrawing();
+    }
+
+    void OnShutdown() override {
+        if (IsWindowReady()) {
+            CloseWindow();
+        }
+    }
+};
+
+int main() {
+    GameEngineApp app;
+    app.Run();
+    return 0;
+}
