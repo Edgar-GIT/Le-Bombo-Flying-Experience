@@ -21,7 +21,7 @@ You fly over a procedural city, pick different vehicles, and maximize destructio
 ### Game Engine - Color + Inspector
 ![Game Engine Scene and Inspector](caps/p5.png)
 
-### Game Engine - 2d mode an Block Workflow
+### Game Engine - 2d mode and Block Workflow
 ![Game Engine Color and Blocks](caps/p6.png)
 
 ### Game Engine - Preview Mode
