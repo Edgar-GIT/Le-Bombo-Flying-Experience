@@ -2,7 +2,7 @@
 
 Originally this project started as a GPU benchmark, then evolved into a chaotic 3D arcade game inspired by Terry Davis' Flight Simulator.
 
-You fly around a colorful procedural city, choose different vehicles, and cause maximum destruction with machine-gun fire, bombs, and a nuke event.
+You fly over a procedural city, pick different vehicles, and maximize destruction with machine-gun fire, bombs, and a nuke event.
 
 ## Screenshots
 
@@ -15,23 +15,34 @@ You fly around a colorful procedural city, choose different vehicles, and cause 
 ### Gameplay
 ![Gameplay](caps/p3.png)
 
+### Game Engine - Main Editor
+![Game Engine Main Editor](caps/p4.png)
+
+### Game Engine - Scene + Inspector
+![Game Engine Scene and Inspector](caps/p5.png)
+
+### Game Engine - Color and Block Workflow
+![Game Engine Color and Blocks](caps/p6.png)
+
+### Game Engine - Preview and Editor Tools
+![Game Engine Preview and Tools](caps/p7.png)
+
 ## Tech Stack
 
 - Languages: C (C99), Zig, C++
-- C (C99): main gameplay, rendering logic, attacks, UI, assets
-- Zig: optimized build pipeline + runtime optimization bridge linked into `LBFE`
-- C++: GameEngine base classes/editor architecture (in progress)
+- C (C99): gameplay loop, rendering logic, attacks, UI, assets
+- Zig: optimized build pipeline + optimization bridge/runtime helpers
+- C++: Game Engine editor architecture and UI layer
 - Graphics/Audio: Raylib (`raylib`, `raymath`, `rlgl`)
-- Rendering API (via Raylib): OpenGL
+- Rendering backend (via Raylib): OpenGL
 
-## What The Game Includes
+## Game Features
 
-- 3D flight gameplay with multiple vehicles (Hellicopter, Alien ship, Plane, Drone, Stealth bomber and f16 Jet)
-- Procedural city generation with animated buildings/clouds
-- Combat systems: machine-gun, laser, standard bombs, nuclear strike
-- Particle-heavy explosions, shockwaves, smoke trails, debris rain
-- HUD, overlays, score-based special events, and menu flow
-- A Game Engine that allows the user to create their own vehicles
+- 3D flight gameplay with multiple vehicles (Hellicopter, Alien ship, Plane, Drone, Stealth bomber, F16 Jet)
+- Procedural city generation
+- Combat systems: machine-gun, laser, bombs, nuke
+- HUD overlays, score-based events, menu flow
+- Extra helper tooling for faster workflow
 
 ## Clone The Repository
 
@@ -40,28 +51,20 @@ git clone https://github.com/Edgar-GIT/Le-Bombo-Flying-Experience.git
 cd Le-Bombo-Flying-Experience
 ```
 
-## Future Plans
-
-This project is intended to keep growing over time.
-
-- A dedicated 3D engine will be created on top of the current project
-- People will be able to build and use their own custom vehicles
-- It will include an optional mode to run as a stress tester and benchmark
-
 ## Tools Folder
 
-The `tools/` folder contains helper programs and platform separation:
+The `main/tools/` folder contains helper programs and platform separation:
 
-- `tools/src/build_tool.c`: automated build system that compiles the game and/or vehicle previewer
-- `tools/src/vehicle_previewer.c`: lightweight vehicle preview (left/right arrows + vehicle name)
-- `tools/linux`, `tools/macos`, `tools/windows`: platform-specific build binaries
+- `main/tools/src/build_tool.c`: automated build system for game and/or vehicle previewer
+- `main/tools/src/vehicle_previewer.c`: lightweight vehicle preview (left/right arrows + vehicle name)
+- `main/tools/linux`, `main/tools/macos`, `main/tools/windows`: platform-specific build binaries
 
 ### Quick Start (Recommended)
 
 From the project root:
 
 ```bash
-# Build game and previewer
+# Build game and previewer (Linux example)
 ./main/tools/linux/build_tool --all
 
 # Run the game
@@ -69,68 +72,55 @@ From the project root:
 ```
 
 Build options:
-- `--all` - Build both game and previewer
-- `--game` - Build game only
-- `--preview` - Build vehicle previewer only
-- `--run-preview` - Build and run previewer
-- `--no-zig` - Force C compiler path (disable Zig pipeline)
-- `--help` - Show help
+
+- `--all` - build game + previewer
+- `--game` - build game only
+- `--preview` - build previewer only
+- `--run-preview` - build and run previewer
+- `--no-zig` - disable Zig path and use fallback C compiler path
+- `--help` - show help
 
 Generated binaries:
+
 - `main/LBFE` (or `main/LBFE.exe` on Windows)
 - `main/build/<platform>/vehicle_previewer`
 
-The game executable is placed directly in `main/` so relative paths to assets work correctly.
+## Build And Run (Game)
 
-Hot-reload note:
-- A running `.exe`/binary cannot update C code changes in true runtime hot-reload mode by default.
-- Recompile and relaunch using `build_tool` for a faster development cycle.
-
-## Build And Run
-
-### Automated Build (Recommended)
+### Automated Build
 
 From the project root:
 
 ```bash
-./main/tools/linux/build_tool --all    # Linux
-./main/tools/macos/build_tool --all    # macOS
-.\main\tools\windows\build_tool.exe --all  # Windows
+./main/tools/linux/build_tool --all
+./main/tools/macos/build_tool --all
+.\main\tools\windows\build_tool.exe --all
 ```
 
 Then run:
+
 ```bash
 ./main/LBFE
 ```
 
 Build behavior:
-- `build_tool` tries the Zig pipeline first (`zig run main/GameEngine/src/zig/main.zig -- ...`)
-- If Zig is missing/fails, it automatically falls back to C compiler builds
-- Use `--no-zig` to force the fallback C-only path
-- The Zig game build links the Zig runtime bridge and compiles with `-DLBFE_USE_ZIG_RUNTIME`
 
-### Manual Compilation
+- `build_tool` tries Zig first (`zig run main/GameEngine/src/zig/main.zig -- ...`)
+- if Zig is unavailable/fails, it falls back to the C compiler path
+- use `--no-zig` to force C-only path
 
-Assets are loaded with relative paths (`img/...` and `music/...`), so the executable must be in the `main/` directory.
+### Manual Build
 
-**Zig Pipeline (manual, recommended for full optimized path)**
+Assets are loaded with relative paths (`img/...` and `music/...`), so keep executable output in `main/`.
+
+#### Zig path (recommended)
 
 ```bash
-mkdir -p /tmp/zig-cache /tmp/zig-local
-ZIG_GLOBAL_CACHE_DIR=/tmp/zig-cache ZIG_LOCAL_CACHE_DIR=/tmp/zig-local \
 zig run main/GameEngine/src/zig/main.zig -- --all
-
 ./main/LBFE
 ```
 
-Useful manual Zig modes:
-- `--all` - Build game and previewer
-- `--game` - Build game only
-- `--preview` - Build previewer only
-
-**C Fallback (manual, no Zig runtime bridge)**
-
-**Linux (GCC + system Raylib)**
+#### C fallback (Linux)
 
 ```bash
 gcc -std=c99 -O2 \
@@ -142,76 +132,113 @@ gcc -std=c99 -O2 \
 ./main/LBFE
 ```
 
-**macOS (Clang + Homebrew Raylib)**
+## Game Engine
 
-```bash
-clang -std=c99 -O2 \
-    main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c \
-    main/src/atacks.c main/src/screens.c main/src/config.c \
-    -o main/LBFE \
-    -I/opt/homebrew/include -L/opt/homebrew/lib -lraylib \
-    -framework OpenGL -framework Cocoa -framework IOKit -framework CoreAudio -framework CoreVideo
+A separate `main/GameEngine/` workspace is being built to let players create custom vehicles.
 
-./main/LBFE
-```
+### Folder Structure
 
-**Windows (MinGW/MSYS2)**
+- `main/GameEngine/src` - engine/editor source code
+- `main/GameEngine/projects` - editable work files (drafts/in-progress)
+- `main/GameEngine/builds` - exported/shareable final builds
+- `main/GameEngine/schemes` - format/version rules for validation
+- `main/GameEngine/cache` - temporary preview/cache files
 
-```bash
-gcc -std=c99 -O2 \
-    main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c \
-    main/src/atacks.c main/src/screens.c main/src/config.c \
-    -o main/LBFE.exe \
-    -I<raylib_include_path> -L<raylib_lib_path> \
-    -lraylib -lopengl32 -lgdi32 -lwinmm
+### Current Capabilities (Implemented)
 
-./main/LBFE.exe
-```
+- Dedicated editor window with dark UI
+- Top toolbar (`New`, `Open`, `Save`, `Export`, `Settings`) and editor mode controls
+- Left tool tabs:
+  - `SCN`: scene manager
+  - `BLK`: block/primitive palette (click or drag-drop to viewport)
+  - `CLR`: color editing panel
+- 2D/3D viewport modes
+- Scene object selection + highlight
+- Inspector panel (rename, visibility, anchored/free, position/rotation/scale)
+- Gizmo modes: `Move`, `Rotate`, `Scale`
+- Delete flow with confirmation popup (`Backspace/Delete`, `X` in scene manager, `X` in inspector)
+- Live preview mode with dedicated controls
+- Event console in status panel with timestamped logs (create/rename/delete/preview)
+- Settings for camera and editor sensitivities
 
-For Windows, if using MSYS2:
-```
--I/mingw64/include -L/mingw64/lib
-```
+### Editor Controls (Current)
 
-## Game Engine (In Progress)
+- `W`, `E`, `R`: switch gizmo mode (`Move`, `Rotate`, `Scale`)
+- `Backspace` / `Delete`: request delete for selected block (with confirmation)
+- `LMB` on handles: manipulate selected block
+- `RMB` drag: orbit camera
+- `Shift + RMB` or `MMB`: pan camera
+- Mouse wheel: zoom
+- `Preview` button: open preview window
 
-A separate `GameEngine/` workspace is being built to let players create custom vehicles with their own shapes, colors, and behavior.
+#### Preview Controls
 
-Current structure:
+- `WASD`: move camera
+- Arrow keys: rotate view
+- `RMB` drag: free look
+- `MMB` drag: pan
+- Mouse wheel: zoom
+- `Shift`: faster movement
+- `Esc` or `Close`: exit preview
 
-- `GameEngine/src` - engine and editor source code
-- `GameEngine/projects` - editable work files (drafts/in-progress)
-- `GameEngine/builds` - exported/shareable final builds
-- `GameEngine/schemes` - format/version rules used to validate vehicle files
-- `GameEngine/cache` - temporary preview/cache files generated by the engine
+### How To Use The Game Engine (Current Workflow)
 
-Goal:
+1. Open the editor.
+2. Go to `BLK` and add primitives (click or drag into viewport).
+3. Select blocks from viewport or scene manager.
+4. Use `Move/Rotate/Scale` gizmo modes to shape the vehicle.
+5. Use `CLR` to adjust colors.
+6. Fine-tune values in the inspector.
+7. Open `Preview` to test the model view and camera movement.
 
-- Create a vehicle in the editor
-- Preview it immediately
-- Save/export it
-- Load it in-game from the builder pipeline
+### Planned Features (Not Implemented Yet)
 
-### Compile The Game Engine
+- Full project persistence (`New/Open/Save/Export`) with durable file format
+- Vehicle package pipeline from editor output directly into game runtime
+- Full custom vehicle behavior authoring (weapons, attack patterns, effects)
+- Asset/material pipeline beyond primitive-only workflow
+- Validation tooling using schemes during export/import
+- Extended in-editor build sharing workflow and distribution packaging
+- Optional stress-test/benchmark mode integrated with editor-generated vehicles
+
+## Build And Run (Game Engine)
+
+### Recommended (Zig builder)
 
 From project root:
 
 ```bash
 zig run main/GameEngine/src/zig/engine_build.zig
+./main/GameEngine/src/GameEngine
 ```
 
 From inside `main/GameEngine/src/zig`:
 
 ```bash
 zig run engine_build.zig
+../GameEngine
 ```
 
 Generated binary:
+
 - `main/GameEngine/src/GameEngine` (Linux/macOS)
 - `main/GameEngine/src/GameEngine.exe` (Windows)
 
-Manual compile command (Linux):
+### Manual Compile (Linux)
 
 ```bash
-g++ -std=c++17 -O3 main/GameEngine/src/main/main.cpp -I main/GameEngine/src/include -o main/GameEngine/src/GameEngine -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+g++ -std=c++17 -O3 \
+    main/GameEngine/src/main/main.cpp main/GameEngine/src/main/gui.cpp \
+    -I main/GameEngine/src/include \
+    -o main/GameEngine/src/GameEngine \
+    -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 ```
+
+## Future Direction
+
+This project is intended to keep growing over time.
+
+- Expand gameplay systems and vehicles
+- Evolve the Game Engine into a complete creator workflow
+- Keep optimization work in Zig/C++ while preserving gameplay quality
+- Maintain optional benchmark/stress-test paths

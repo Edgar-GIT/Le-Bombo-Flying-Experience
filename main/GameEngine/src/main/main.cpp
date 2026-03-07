@@ -1,4 +1,5 @@
 #include "../include/main.hpp"
+#include "../include/gui.hpp"
 
 #include <chrono>
 #include "raylib.h"
@@ -64,7 +65,6 @@ void EngineBase::OnRender() {}
 
 void EngineBase::OnShutdown() {}
 
-//app base da game engine com janela maximizada em modo windowed
 class GameEngineApp : public EngineBase {
 protected:
     bool OnInit() override {
@@ -84,6 +84,7 @@ protected:
     void OnRender() override {
         BeginDrawing();
             ClearBackground(BLACK);
+            DrawEngineGuiLayout(GetFrameTime());
         EndDrawing();
     }
 

@@ -27,12 +27,14 @@ pub fn main() !void {
     try appendOptimizationFlags(&args);
     try args.appendSlice(&.{
         "main/GameEngine/src/main/main.cpp",
+        "main/GameEngine/src/main/gui.cpp",
         "-I",
         "main/GameEngine/src/include",
         "-o",
         output,
     });
     try appendPlatformRaylibFlags(&args);
+    try appendPlatformLinkerOptimizationFlags(&args);
 
     try runCommand(allocator, args.items);
     _ = stripBinary(allocator, output) catch {};
@@ -71,6 +73,11 @@ fn appendOptimizationFlags(args: *std.array_list.Managed([]const u8)) !void {
         "-ffast-math",
         "-fstrict-aliasing",
         "-fomit-frame-pointer",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-math-errno",
+        "-fno-trapping-math",
+        "-fno-semantic-interposition",
     });
 }
 
@@ -105,6 +112,21 @@ fn appendPlatformRaylibFlags(args: *std.array_list.Managed([]const u8)) !void {
             "-ldl",
             "-lrt",
             "-lX11",
+        }),
+    }
+}
+
+fn appendPlatformLinkerOptimizationFlags(args: *std.array_list.Managed([]const u8)) !void {
+    switch (builtin.os.tag) {
+        .windows => try args.appendSlice(&.{
+            "-Wl,--gc-sections",
+        }),
+        .macos => try args.appendSlice(&.{
+            "-Wl,-dead_strip",
+        }),
+        else => try args.appendSlice(&.{
+            "-Wl,--gc-sections",
+            "-Wl,--as-needed",
         }),
     }
 }
