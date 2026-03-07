@@ -27,6 +27,7 @@ pub fn main() !void {
     try appendOptimizationFlags(&args);
     try args.appendSlice(&.{
         "main/GameEngine/src/main/main.cpp",
+        "main/GameEngine/src/main/config.cpp",
         "main/GameEngine/src/main/gui.cpp",
         "-I",
         "main/GameEngine/src/include",

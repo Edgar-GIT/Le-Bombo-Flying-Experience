@@ -228,7 +228,7 @@ Generated binary:
 
 ```bash
 g++ -std=c++17 -O3 \
-    main/GameEngine/src/main/main.cpp main/GameEngine/src/main/gui.cpp \
+    main/GameEngine/src/main/main.cpp main/GameEngine/src/main/config.cpp main/GameEngine/src/main/gui.cpp \
     -I main/GameEngine/src/include \
     -o main/GameEngine/src/GameEngine \
     -lraylib -lGL -lm -lpthread -ldl -lrt -lX11

@@ -1,4 +1,5 @@
 #include "../include/gui.hpp"
+#include "../include/config.hpp"
 
 #include "raylib.h"
 #include "raymath.h"
@@ -10,148 +11,6 @@
 #include <cstring>
 #include <string>
 #include <vector>
-
-enum class LeftTab {
-    Scene = 0,
-    Blocks,
-    Colors
-};
-
-enum class FilterMode {
-    All = 0,
-    TwoD,
-    ThreeD
-};
-
-enum class GizmoMode {
-    Move = 0,
-    Rotate,
-    Scale
-};
-
-enum class GizmoAxis {
-    None = 0,
-    X,
-    Y,
-    Z
-};
-
-enum class PrimitiveKind {
-    Cube = 0,
-    Sphere,
-    Cylinder,
-    Cone,
-    Plane,
-    Rectangle2D,
-    Circle2D,
-    Triangle2D,
-    Ring2D,
-    Poly2D,
-    Line2D
-};
-
-struct PrimitiveDef {
-    PrimitiveKind kind;
-    const char *label;
-    bool is2D;
-    const char *tooltip;
-};
-
-static const PrimitiveDef kPrimitiveDefs[] = {
-    { PrimitiveKind::Cube, "Cube", false, "3D cube primitive" },
-    { PrimitiveKind::Sphere, "Sphere", false, "3D sphere primitive" },
-    { PrimitiveKind::Cylinder, "Cylinder", false, "3D cylinder primitive" },
-    { PrimitiveKind::Cone, "Cone", false, "3D cone primitive" },
-    { PrimitiveKind::Plane, "Plane", false, "3D plane primitive" },
-    { PrimitiveKind::Rectangle2D, "Rectangle", true, "2D rectangle primitive" },
-    { PrimitiveKind::Circle2D, "Circle", true, "2D circle primitive" },
-    { PrimitiveKind::Triangle2D, "Triangle", true, "2D triangle primitive" },
-    { PrimitiveKind::Ring2D, "Ring", true, "2D ring primitive" },
-    { PrimitiveKind::Poly2D, "Polygon", true, "2D polygon primitive" },
-    { PrimitiveKind::Line2D, "Line", true, "2D line primitive" }
-};
-
-struct EditorObject {
-    std::string name;
-    PrimitiveKind kind;
-    bool is2D;
-    bool visible;
-    bool anchored;
-    Vector3 position;
-    Vector3 rotation;
-    Vector3 scale;
-    Color color;
-};
-
-struct EngineLogEntry {
-    char timestamp[32];
-    std::string text;
-};
-
-struct EditorGuiState {
-    bool initialized;
-    bool showRightPanel;
-    bool showSettings;
-    bool statusExpanded;
-    bool isolateSelected;
-    bool viewport2D;
-    bool previewOpen;
-    LeftTab leftTab;
-    FilterMode filterMode;
-    GizmoMode gizmoMode;
-    GizmoAxis activeAxis;
-    float rightPanelT;
-    float statusPanelT;
-
-    Camera3D camera;
-    Vector3 orbitTarget;
-    float orbitYaw;
-    float orbitPitch;
-    float orbitDistance;
-    float cameraOrbitSensitivity;
-    float cameraPanSensitivity;
-    float cameraZoomSensitivity;
-    float gizmoMoveSensitivity;
-    float gizmoRotateSensitivity;
-    float gizmoScaleSensitivity;
-    float previewMoveSpeed;
-    float previewLookSensitivity;
-    float previewZoomSpeed;
-    float previewPanSensitivity;
-    bool leftDragNavigate;
-    bool draggingObjectMove;
-    Vector3 moveDragPlanePoint;
-    Vector3 moveDragPlaneNormal;
-    Vector3 moveDragOffset;
-    Camera3D previewCamera;
-    float previewYaw;
-    float previewPitch;
-
-    float panelScroll;
-    int selectedIndex;
-    int renameIndex;
-    bool renameFromInspector;
-    bool showDeleteConfirm;
-    int deleteTargetIndex;
-    char deleteTargetName[64];
-    char renameBuffer[64];
-    double lastSceneClickTime;
-    int lastSceneClickIndex;
-
-    bool palettePressArmed;
-    PrimitiveKind palettePressedKind;
-    Vector2 palettePressMouse;
-    bool draggingPalette;
-    PrimitiveKind draggingKind;
-
-    float colorHue;
-    float colorSat;
-    float colorVal;
-    int colorSyncIndex;
-
-    std::vector<EngineLogEntry> logs;
-    std::vector<EditorObject> objects;
-};
 
 static EditorGuiState gState = {};
 static const char *gHoverTooltip = nullptr;
@@ -183,8 +42,8 @@ static void AddLog(EditorGuiState &st, const char *message) {
     std::strftime(entry.timestamp, sizeof(entry.timestamp), "%Y-%m-%d %H:%M:%S", &tmNow);
     entry.text = message ? message : "";
     st.logs.push_back(entry);
-    if ((int)st.logs.size() > 240) {
-        st.logs.erase(st.logs.begin(), st.logs.begin() + 40);
+    if ((int)st.logs.size() > kUserConfig.maxLogEntries) {
+        st.logs.erase(st.logs.begin(), st.logs.begin() + kUserConfig.trimLogEntries);
     }
     std::printf("[%s] %s\n", entry.timestamp, entry.text.c_str());
 }
@@ -210,7 +69,8 @@ static void UpdateTextFieldBuffer(char *buffer, size_t bufferSize, bool *submit,
 }
 
 static const PrimitiveDef *FindPrimitiveDef(PrimitiveKind kind) {
-    for (const PrimitiveDef &def : kPrimitiveDefs) {
+    for (int i = 0; i < kPrimitiveDefCount; i++) {
+        const PrimitiveDef &def = kPrimitiveDefs[i];
         if (def.kind == kind) return &def;
     }
     return nullptr;
@@ -1155,7 +1015,8 @@ static void DrawBlocksTab(Rectangle panelRect, EditorGuiState &st, const Rectang
     const float cellH = 78.0f;
     const float cellW = listArea.width;
 
-    for (const PrimitiveDef &def : kPrimitiveDefs) {
+    for (int i = 0; i < kPrimitiveDefCount; i++) {
+        const PrimitiveDef &def = kPrimitiveDefs[i];
         if (!PrimitivePassesFilter(def, st.filterMode)) continue;
 
         Rectangle cell = { listArea.x + 2.0f, cellY, cellW - 4.0f, cellH - 6.0f };
@@ -1318,16 +1179,16 @@ static void InitState() {
     gState.orbitYaw = 2.35f;
     gState.orbitPitch = 0.55f;
     gState.orbitDistance = 28.0f;
-    gState.cameraOrbitSensitivity = 0.008f;
-    gState.cameraPanSensitivity = 0.006f;
-    gState.cameraZoomSensitivity = 0.06f;
-    gState.gizmoMoveSensitivity = 1.0f;
-    gState.gizmoRotateSensitivity = 28.0f;
-    gState.gizmoScaleSensitivity = 0.30f;
-    gState.previewMoveSpeed = 12.0f;
-    gState.previewLookSensitivity = 0.0045f;
-    gState.previewZoomSpeed = 4.5f;
-    gState.previewPanSensitivity = 2.2f;
+    gState.cameraOrbitSensitivity = kUserConfig.cameraOrbitSensitivity;
+    gState.cameraPanSensitivity = kUserConfig.cameraPanSensitivity;
+    gState.cameraZoomSensitivity = kUserConfig.cameraZoomSensitivity;
+    gState.gizmoMoveSensitivity = kUserConfig.gizmoMoveSensitivity;
+    gState.gizmoRotateSensitivity = kUserConfig.gizmoRotateSensitivity;
+    gState.gizmoScaleSensitivity = kUserConfig.gizmoScaleSensitivity;
+    gState.previewMoveSpeed = kUserConfig.previewMoveSpeed;
+    gState.previewLookSensitivity = kUserConfig.previewLookSensitivity;
+    gState.previewZoomSpeed = kUserConfig.previewZoomSpeed;
+    gState.previewPanSensitivity = kUserConfig.previewPanSensitivity;
     gState.leftDragNavigate = false;
     gState.draggingObjectMove = false;
     gState.moveDragPlanePoint = { 0.0f, 0.0f, 0.0f };
@@ -1372,7 +1233,7 @@ void DrawEngineGuiLayout(float dt) {
         return;
     }
 
-    float t = Clampf(dt * 10.0f, 0.0f, 1.0f);
+    float t = Clampf(dt * kUserConfig.uiAnimationSpeed, 0.0f, 1.0f);
     gState.rightPanelT = LerpF(gState.rightPanelT, gState.showRightPanel ? 1.0f : 0.0f, t);
     gState.statusPanelT = LerpF(gState.statusPanelT, gState.statusExpanded ? 1.0f : 0.0f, t);
 
