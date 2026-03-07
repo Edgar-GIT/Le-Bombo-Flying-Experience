@@ -18,13 +18,13 @@ You fly over a procedural city, pick different vehicles, and maximize destructio
 ### Game Engine - Main Editor
 ![Game Engine Main Editor](caps/p4.png)
 
-### Game Engine - Scene + Inspector
+### Game Engine - Color + Inspector
 ![Game Engine Scene and Inspector](caps/p5.png)
 
-### Game Engine - Color and Block Workflow
+### Game Engine - 2d mode an Block Workflow
 ![Game Engine Color and Blocks](caps/p6.png)
 
-### Game Engine - Preview and Editor Tools
+### Game Engine - Preview Mode
 ![Game Engine Preview and Tools](caps/p7.png)
 
 ## Tech Stack
