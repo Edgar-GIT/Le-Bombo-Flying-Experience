@@ -2,7 +2,14 @@
 
 Originally this project started as a GPU benchmark, then evolved into a chaotic 3D arcade game inspired by Terry Davis' Flight Simulator.
 
-You fly over a procedural city, pick different vehicles, and maximize destruction with machine-gun fire, bombs, and a nuke event.
+You fly over a procedural city, pick different vehicles, and maximize destruction with machine-gun fire, bombs, laser attacks, and nuke events.
+
+## Clone The Repository
+
+```bash
+git clone https://github.com/Edgar-GIT/Le-Bombo-Flying-Experience.git
+cd Le-Bombo-Flying-Experience
+```
 
 ## Screenshots
 
@@ -18,110 +25,78 @@ You fly over a procedural city, pick different vehicles, and maximize destructio
 ### Game Engine - Main Editor
 ![Game Engine Main Editor](caps/p4.png)
 
-### Game Engine - Color + Inspector
+### Game Engine - Scene + Inspector
 ![Game Engine Scene and Inspector](caps/p5.png)
 
-### Game Engine - 2d mode and Block Workflow
-![Game Engine Color and Blocks](caps/p6.png)
+### Game Engine - 2D Workflow
+![Game Engine 2D and Blocks](caps/p6.png)
 
 ### Game Engine - Preview Mode
 ![Game Engine Preview and Tools](caps/p7.png)
 
+### Custom Vehicle In Main Game
+![Custom Vehicle In Gameplay](caps/p8.png)
+
 ## Tech Stack
 
-- Languages: C (C99), Zig, C++
-- C (C99): gameplay loop, rendering logic, attacks, UI, assets
-- Zig: optimized build pipeline + optimization bridge/runtime helpers
-- C++: Game Engine editor architecture and UI layer
-- Graphics/Audio: Raylib (`raylib`, `raymath`, `rlgl`)
-- Rendering backend (via Raylib): OpenGL
+- Languages: C (C99), C++, Zig
+- Rendering/Audio: Raylib (`raylib`, `raymath`, `rlgl`)
+- Backend via Raylib: OpenGL
+- C: main game runtime, gameplay systems, effects, menus
+- C++: Game Engine editor UI/workflow/modules
+- Zig: optimized builders and runtime optimization bridge
 
-## Game Features
+## Main Game Features
 
-- 3D flight gameplay with multiple vehicles (Helicopter, UFO, Airplane, Drone, Hawk, Jet F-16)
-- Procedural city generation
-- Combat systems: machine-gun, laser, bombs, nuke
-- HUD overlays, score-based events, menu flow
-- Custom vehicle loading from `.vehicle` files exported by the Game Engine
-- Extra helper tooling for faster workflow
-
-## Clone The Repository
-
-```bash
-git clone https://github.com/Edgar-GIT/Le-Bombo-Flying-Experience.git
-cd Le-Bombo-Flying-Experience
-```
+- 3D flight gameplay over a procedural city
+- Vehicles: Helicopter, Jet F-16, Airplane, UFO, Drone, Hawk, Custom Vehicle
+- Attack systems: machine gun, bombs, laser-style shots, nuke logic
+- Score event system with media triggers
+- Combo/multiplier systems and UI overlays
+- Dynamic destruction and large effect pipelines
+- Loads latest exported custom vehicle (`.vehicle`) from the Game Engine builds folder
 
 ## Tools Folder
 
-The `main/tools/` folder contains helper programs and platform separation:
+`main/tools/` contains helper programs and platform-specific binaries:
 
-- `main/tools/src/build_tool.c`: automated build system for game and/or vehicle previewer
-- `main/tools/src/vehicle_previewer.c`: lightweight vehicle preview (left/right arrows + vehicle name)
-- `main/tools/linux`, `main/tools/macos`, `main/tools/windows`: platform-specific build binaries
+- `main/tools/src/build_tool.c`: builds game and previewer
+- `main/tools/src/vehicle_previewer.c`: lightweight vehicle preview app
+- `main/tools/linux`, `main/tools/macos`, `main/tools/windows`: prebuilt platform helpers
 
-### Quick Start (Recommended)
+Build tool options:
 
-From the project root:
+- `--all`
+- `--game`
+- `--preview`
+- `--run-preview`
+- `--no-zig`
+- `--help`
+
+## Build And Run (Main Game)
+
+### Recommended
 
 ```bash
-# Build game and previewer (Linux example)
 ./main/tools/linux/build_tool --all
-
-# Run the game
 ./main/LBFE
 ```
 
-Build options:
+Windows:
 
-- `--all` - build game + previewer
-- `--game` - build game only
-- `--preview` - build previewer only
-- `--run-preview` - build and run previewer
-- `--no-zig` - disable Zig path and use fallback C compiler path
-- `--help` - show help
-
-Generated binaries:
-
-- `main/LBFE` (or `main/LBFE.exe` on Windows)
-- `main/build/<platform>/vehicle_previewer`
-
-## Build And Run (Game)
-
-### Automated Build
-
-From the project root:
-
-```bash
-./main/tools/linux/build_tool --all
-./main/tools/macos/build_tool --all
+```powershell
 .\main\tools\windows\build_tool.exe --all
+.\main\LBFE.exe
 ```
 
-Then run:
-
-```bash
-./main/LBFE
-```
-
-Build behavior:
-
-- `build_tool` tries Zig first (`zig run main/GameEngine/src/zig/main.zig -- ...`)
-- if Zig is unavailable/fails, it falls back to the C compiler path
-- use `--no-zig` to force C-only path
-
-### Manual Build
-
-Assets are loaded with relative paths (`img/...` and `music/...`), so keep executable output in `main/`.
-
-#### Zig path (recommended)
+### Zig Manual Path
 
 ```bash
 zig run main/GameEngine/src/zig/main.zig -- --all
 ./main/LBFE
 ```
 
-#### C fallback (Linux)
+### C Manual Path (Linux)
 
 ```bash
 gcc -std=c99 -O2 \
@@ -129,101 +104,134 @@ gcc -std=c99 -O2 \
     main/src/atacks.c main/src/screens.c main/src/config.c main/src/custom_vehicle.c \
     -o main/LBFE \
     -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
-
-./main/LBFE
 ```
 
 ## Game Engine
 
-A separate `main/GameEngine/` workspace is being built to let players create custom vehicles.
+The editor lives in `main/GameEngine/` and is focused on creating fully playable custom vehicles for the main game.
 
-### Folder Structure
+### Game Engine Structure
 
-- `main/GameEngine/src` - engine/editor source code
-- `main/GameEngine/projects` - editable work files (drafts/in-progress)
-- `main/GameEngine/pieces` - user-created reusable piece templates (`.piece`)
-- `main/GameEngine/builds` - exported/shareable final builds
-- `main/GameEngine/schemes` - format/version rules for validation
-- `main/GameEngine/cache` - temporary preview/cache files
+- `main/GameEngine/src`: source code
+- `main/GameEngine/projects`: project workspaces (`scene.json`, `autosave.json`)
+- `main/GameEngine/pieces`: reusable piece templates (`.piece`)
+- `main/GameEngine/builds`: final exported vehicles (`.vehicle`)
+- `main/GameEngine/cache`: temporary cache/recovery data
 
-### Current Capabilities (Implemented)
+### Implemented Features (Current)
 
 - Dedicated editor window with dark UI
-- Top toolbar (`New`, `Open`, `Save`, `Export`, `Settings`) and editor mode controls
-- VS Code style workspace tabs (`pj1`, `piece 1`, ...) with switching between project and piece workspaces
-- Left tool tabs:
-  - `SCN`: scene manager
-  - `BLK`: block/primitive palette (click or drag-drop to viewport)
-  - `CLR`: color editing panel
-  - `PCS`: make your own piece workflow and piece browser
-  - `LSR`: laser shotpoint authoring panel
-- 2D/3D viewport modes
-- Scene object selection + highlight and rectangle multi-select (`Select` mode)
-- Selection drag-copy from viewport to another workspace tab
-- Inspector panel (rename, visibility, anchored/free, position/rotation/scale)
-- Layer system with visibility toggles and active-layer assignment
-- Basic hierarchy support with parent assignment per object
-- Gizmo modes: `Move`, `Rotate`, `Scale`
-- Delete flow with confirmation popup (`Backspace/Delete`, `X` in scene manager, `X` in inspector)
-- Live preview mode with dedicated controls
-- Blast preview mode (`Prev Blasts`) and per-shotpoint preview
-- Shotpoint placement mode with isolated object view
-- Event console in status panel with timestamped logs (create/rename/delete/preview)
-- Settings for camera and editor sensitivities
-- Project persistence with `scene.json` + `autosave.json`
-- Piece persistence with `.piece` templates auto-loaded from `main/GameEngine/pieces`
-- Export to `.vehicle` in `main/GameEngine/builds`
+- Top bar actions: `New`, `Open`, `Save`, `Export`, `Import`, `Settings`
+- Workspace tabs:
+  - project/piece tabs
+  - close tab (`x`)
+  - right click context (`Rename`, `Duplicate`, `Close`)
+  - inline tab rename
+  - create new tab/new piece tab
+- Left tool rail:
+  - `SCN` scene manager
+  - `BLK` block palette
+  - `CLR` color editor
+  - `PCS` piece workflow
+  - `LSR` lasers/shotpoints
+- Toggleable side panels (left and right)
+- 2D / 3D viewport modes
+- View tools: move/rotate/scale/select/undo/redo/preview/prev blasts/isolate
+- Mirror tool in toolbar with axis switch (`X`, `Y`, `Z`)
+- Adaptive toolbar sizing so labels fit better
+- Rectangle multi-select
+- Selection drag-copy to other tabs
+- Clipboard actions:
+  - `Ctrl+C` copy selection
+  - `Ctrl+V` paste selection
+  - `Ctrl+X` cut selection
+  - `Ctrl+D` duplicate selection
+- Inspector editing:
+  - rename
+  - visible/hidden
+  - anchored/free
+  - transform values
+  - hierarchy parent
+  - layer assignment
+- Layer system:
+  - add layer
+  - active layer
+  - show/hide per layer
+  - assign selected object to active layer
+- Scene list with hierarchy indentation lines
+- Color panel with hue/saturation/value workflow
+- Block palette filtering: `All`, `2D`, `3D`
+- Drag/drop primitive creation into viewport
+- Piece workflow:
+  - create piece from selection
+  - save active piece tab
+  - reload piece library
+  - open piece in tab
+  - spawn piece into scene
+- Vehicle forward direction setup:
+  - yaw offset
+  - presets (`Front`, `Right`, `Back`, `Left`)
+- Shotpoint system:
+  - add/delete shotpoints
+  - bind to selected object
+  - define placement in isolated placement view
+  - placement with XYZ gizmo drag
+  - shotpoint color/size/enable controls
+  - preview single shotpoint
+  - preview all blasts
+- Preview windows:
+  - dedicated scene preview
+  - blast preview modes
+  - navigation and look controls
+- Delete confirmation popup (single and multi-delete)
+- Status/console panel with timestamped logs
+- Settings panel for camera/gizmo/preview sensitivities
+- Persistence:
+  - create/open/save projects
+  - autosave and recovery hooks
+  - piece and workspace synchronization
+- Export validation:
+  - blocks required
+  - no empty/duplicate block names
+  - at least one active valid shotpoint
+- `.vehicle` import back into editor (`Import` button)
+- Runtime integration: exported `.vehicle` appears in main game vehicle flow
 
-### Editor Controls (Current)
+## Basic Mini Tutorial (Game Engine)
 
-- `W`, `E`, `R`: switch gizmo mode (`Move`, `Rotate`, `Scale`)
-- `Select` toolbar button: drag rectangle multi-select in viewport
-- `Backspace` / `Delete`: request delete for selected block (with confirmation)
-- `LMB` on handles: manipulate selected block
-- `RMB` drag: orbit camera
-- `Shift + RMB` or `MMB`: pan camera
+1. Open the engine.
+2. Click `New` and create/open a project.
+3. In `BLK`, add primitives (click or drag into viewport).
+4. Use `Move`, `Rotate`, `Scale` to shape your vehicle.
+5. Use `SCN` for layers/hierarchy/visibility.
+6. Use `CLR` to set colors.
+7. In `LSR`, create shotpoints, bind to parts, and set placement.
+8. Click `Preview` / `Prev Blasts` to test the model and firing points.
+9. In `PCS`, create reusable `.piece` parts if needed.
+10. Set front direction in `PCS` using yaw or the preset buttons.
+11. Click `Save`.
+12. Click `Export` to generate `.vehicle` in `main/GameEngine/builds`.
+13. Run the main game and select the custom vehicle.
+
+## Editor Controls (Quick Reference)
+
+- `W` / `E` / `R`: move/rotate/scale mode
+- `Ctrl+Z` / `Ctrl+Y`: undo/redo
+- `Ctrl+C` / `Ctrl+V`: copy/paste selection
+- `Ctrl+X` / `Ctrl+D`: cut/duplicate selection
+- `Delete` / `Backspace`: request delete selected
 - Mouse wheel: zoom
-- `Preview` button: open preview window
-
-#### Preview Controls
-
-- `WASD`: move camera
-- Arrow keys: rotate view
-- `RMB` drag: free look
-- `MMB` drag: pan
-- Mouse wheel: zoom
-- `Shift`: faster movement
-- `Esc` or `Close`: exit preview
-
-### How To Use The Game Engine (Current Workflow)
-
-1. Open the editor.
-2. Go to `BLK` and add primitives (click or drag into viewport).
-3. Select blocks from viewport or scene manager.
-4. Use `SCN` to manage hierarchy/layers and set hide/show.
-5. Use `Move/Rotate/Scale` gizmo modes to shape the vehicle.
-6. Use `Select` mode for rectangle multi-select and drag selected blocks into another tab to copy.
-7. Use `CLR` to adjust colors.
-8. Go to `LSR` to create shotpoints and bind them to blocks.
-9. Use `PCS` or `+ Piece` to create `.piece` templates from selection.
-10. Open piece tabs, edit them, save them, and spawn them back into project tabs.
-11. Use `Define Placement` to place shotpoints directly on a block.
-12. Use `Preview Shot` or `Prev Blasts` to validate laser origin and style.
-13. Fine-tune values in the inspector and shotpoint panel.
-14. Click `Export` to generate `main/GameEngine/builds/<project>.vehicle`.
-15. Run the main game and pick the custom vehicle in the vehicle menu.
-
-### Planned Features (Not Implemented Yet)
-
-- Advanced custom weapon behavior beyond shotpoint forward-fire
-- Full material and texture pipeline for custom assets
-- Validation tooling using schemes during import/export
-- Extended build sharing pipeline with richer metadata
-- Optional stress-test/benchmark mode integrated with generated vehicles
+- `RMB`: look/orbit
+- `MMB` or `Shift+RMB`: pan
+- Preview window:
+  - `WASD` move
+  - arrows look
+  - `Shift` speed up
+  - `Esc` close
 
 ## Build And Run (Game Engine)
 
-### Recommended (Zig builder)
+### Recommended (Zig Builder)
 
 From project root:
 
@@ -232,17 +240,12 @@ zig run main/GameEngine/src/zig/engine_build.zig
 ./main/GameEngine/src/GameEngine
 ```
 
-From inside `main/GameEngine/src/zig`:
+From `main/GameEngine/src/zig`:
 
 ```bash
 zig run engine_build.zig
 ../GameEngine
 ```
-
-Generated binary:
-
-- `main/GameEngine/src/GameEngine` (Linux/macOS)
-- `main/GameEngine/src/GameEngine.exe` (Windows)
 
 ### Manual Compile (Linux)
 
@@ -255,6 +258,7 @@ g++ -std=c++17 -O3 \
     main/GameEngine/src/main/gui_shotpoints.cpp \
     main/GameEngine/src/main/main_gui.cpp \
     main/GameEngine/src/main/vehicle_export.cpp \
+    main/GameEngine/src/main/vehicle_import.cpp \
     main/GameEngine/src/main/persistence.cpp \
     main/GameEngine/src/main/persistence_io.cpp \
     main/GameEngine/src/main/persistence_picker.cpp \
@@ -267,18 +271,14 @@ g++ -std=c++17 -O3 \
 
 ## Custom Vehicle Runtime Pipeline
 
-1. Build and run the Game Engine.
-2. Create or open a project, build your vehicle, add shotpoints in `LSR`.
-3. Click `Export`.
-4. The engine writes `*.vehicle` files to `main/GameEngine/builds/`.
-5. Start the main game (`./main/LBFE`).
-6. On startup, the game scans that builds folder, loads the newest `.vehicle`, and exposes it in vehicle selection.
+1. Build vehicle in Game Engine.
+2. Export to `.vehicle`.
+3. File is saved to `main/GameEngine/builds/`.
+4. Start `LBFE`.
+5. Game auto-loads newest `.vehicle` and exposes it as custom vehicle.
 
 ## Future Direction
 
-This project is intended to keep growing over time.
-
-- Expand gameplay systems and vehicles
-- Evolve the Game Engine into a complete creator workflow
-- Keep optimization work in Zig/C++ while preserving gameplay quality
-- Maintain optional benchmark/stress-test paths
+- Grow Game Engine into a full creator platform
+- Add stronger benchmark/stress-test modes
+- Continue performance work in C/C++/Zig without reducing gameplay quality

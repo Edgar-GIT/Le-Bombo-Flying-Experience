@@ -1,6 +1,5 @@
-# Ignore text guides
+# Ignore text guides in main
 main/*.txt
-*.txt
 
 # Build outputs
 main/LBFE
@@ -9,6 +8,13 @@ main/build/
 *.out
 *.exe
 *.o
+
+# Game Engine generated project/runtime data
+main/GameEngine/projects/**/*.json
+main/GameEngine/cache/**/*.json
+main/GameEngine/builds/*.vehicle
+main/GameEngine/builds/*.json
+main/GameEngine/pieces/*.piece
 
 # OS/editor noise
 .DS_Store
