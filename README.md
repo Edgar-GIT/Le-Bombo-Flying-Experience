@@ -85,6 +85,15 @@ Prerequisites (MSYS2 UCRT64 recommended):
 pacman -S --needed mingw-w64-ucrt-x86_64-raylib zig
 ```
 
+If `zig build` says it cannot find `raylib`, define one of these before building:
+
+```powershell
+$env:RAYLIB_ROOT="C:/msys64/ucrt64"
+# or
+$env:RAYLIB_LIB_DIR="C:/msys64/ucrt64/lib"
+$env:RAYLIB_INCLUDE_DIR="C:/msys64/ucrt64/include"
+```
+
 Build everything:
 
 ```bash

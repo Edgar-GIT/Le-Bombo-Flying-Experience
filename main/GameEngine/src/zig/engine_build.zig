@@ -45,7 +45,7 @@ pub fn main() !void {
         "-o",
         output,
     });
-    try appendPlatformRaylibFlags(&args);
+    try appendPlatformRaylibFlags(allocator, &args);
     try appendPlatformLinkerOptimizationFlags(&args);
 
     try runCommand(allocator, args.items);
@@ -93,14 +93,17 @@ fn appendOptimizationFlags(args: *std.array_list.Managed([]const u8)) !void {
     });
 }
 
-fn appendPlatformRaylibFlags(args: *std.array_list.Managed([]const u8)) !void {
+fn appendPlatformRaylibFlags(allocator: std.mem.Allocator, args: *std.array_list.Managed([]const u8)) !void {
     switch (builtin.os.tag) {
-        .windows => try args.appendSlice(&.{
-            "-lraylib",
-            "-lopengl32",
-            "-lgdi32",
-            "-lwinmm",
-        }),
+        .windows => {
+            try appendWindowsRaylibPaths(allocator, args);
+            try args.appendSlice(&.{
+                "-lraylib",
+                "-lopengl32",
+                "-lgdi32",
+                "-lwinmm",
+            });
+        },
         .macos => try args.appendSlice(&.{
             "-I/opt/homebrew/include",
             "-L/opt/homebrew/lib",
@@ -126,6 +129,82 @@ fn appendPlatformRaylibFlags(args: *std.array_list.Managed([]const u8)) !void {
             "-lX11",
         }),
     }
+}
+
+fn appendWindowsRaylibPaths(allocator: std.mem.Allocator, args: *std.array_list.Managed([]const u8)) !void {
+    // Tries explicit env paths first to support PowerShell and plain Zig installs.
+    try appendWindowsPathFromEnv(allocator, args, "RAYLIB_ROOT", true);
+    try appendWindowsPathFromEnv(allocator, args, "RAYLIB_LIB_DIR", false);
+    try appendWindowsPathFromEnv(allocator, args, "RAYLIB_INCLUDE_DIR", false);
+
+    // Tries common MSYS2 install prefixes used by raylib packages on Windows.
+    try appendWindowsSearchPrefixIfExists(allocator, args, "C:/msys64/ucrt64");
+    try appendWindowsSearchPrefixIfExists(allocator, args, "C:/msys64/mingw64");
+}
+
+fn appendWindowsPathFromEnv(
+    allocator: std.mem.Allocator,
+    args: *std.array_list.Managed([]const u8),
+    name: []const u8,
+    add_include_and_lib: bool,
+) !void {
+    const value = std.process.getEnvVarOwned(allocator, name) catch return;
+    defer allocator.free(value);
+
+    if (add_include_and_lib) {
+        const include_dir = try std.fmt.allocPrint(allocator, "{s}/include", .{value});
+        defer allocator.free(include_dir);
+        const lib_dir = try std.fmt.allocPrint(allocator, "{s}/lib", .{value});
+        defer allocator.free(lib_dir);
+
+        try appendWindowsSearchPrefixIfExists(allocator, args, value);
+        try appendWindowsLibDirIfExists(allocator, args, lib_dir);
+        try appendWindowsIncludeDirIfExists(allocator, args, include_dir);
+        return;
+    }
+
+    if (std.mem.endsWith(u8, name, "_LIB_DIR")) {
+        try appendWindowsLibDirIfExists(allocator, args, value);
+    } else if (std.mem.endsWith(u8, name, "_INCLUDE_DIR")) {
+        try appendWindowsIncludeDirIfExists(allocator, args, value);
+    }
+}
+
+fn appendWindowsSearchPrefixIfExists(
+    allocator: std.mem.Allocator,
+    args: *std.array_list.Managed([]const u8),
+    prefix: []const u8,
+) !void {
+    if (!dirExistsAbsolute(prefix)) return;
+    const owned = try allocator.dupe(u8, prefix);
+    try args.append("--search-prefix");
+    try args.append(owned);
+}
+
+fn appendWindowsLibDirIfExists(
+    allocator: std.mem.Allocator,
+    args: *std.array_list.Managed([]const u8),
+    lib_dir: []const u8,
+) !void {
+    if (!dirExistsAbsolute(lib_dir)) return;
+    const flag = try std.fmt.allocPrint(allocator, "-L{s}", .{lib_dir});
+    try args.append(flag);
+}
+
+fn appendWindowsIncludeDirIfExists(
+    allocator: std.mem.Allocator,
+    args: *std.array_list.Managed([]const u8),
+    include_dir: []const u8,
+) !void {
+    if (!dirExistsAbsolute(include_dir)) return;
+    const flag = try std.fmt.allocPrint(allocator, "-I{s}", .{include_dir});
+    try args.append(flag);
+}
+
+fn dirExistsAbsolute(path: []const u8) bool {
+    var dir = std.fs.openDirAbsolute(path, .{}) catch return false;
+    dir.close();
+    return true;
 }
 
 fn appendPlatformLinkerOptimizationFlags(args: *std.array_list.Managed([]const u8)) !void {
