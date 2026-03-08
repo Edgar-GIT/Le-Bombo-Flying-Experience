@@ -5,6 +5,8 @@ main/*.txt
 main/LBFE
 main/LBFE.exe
 main/build/
+.zig-cache/
+zig-out/
 *.out
 *.exe
 *.o

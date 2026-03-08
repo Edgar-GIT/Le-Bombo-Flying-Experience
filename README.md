@@ -73,27 +73,47 @@ Build tool options:
 - `--no-zig`
 - `--help`
 
-## Build And Run (Main Game)
+## Build And Run (Zig - Recommended)
 
-### Recommended
+Use these commands from the repository root on Linux, macOS, or Windows:
 
 ```bash
-./main/tools/linux/build_tool --all
-./main/LBFE
+zig build              # builds LBFE + vehicle_previewer
+zig build run          # builds and runs LBFE
+zig build preview      # builds only vehicle_previewer
+zig build run-preview  # builds and runs vehicle_previewer
+zig build engine       # builds GameEngine editor
+zig build run-engine   # builds and runs GameEngine editor
 ```
 
-Windows:
+### Windows Notes
 
-```powershell
-.\main\tools\windows\build_tool.exe --all
-.\main\LBFE.exe
+- Run commands from the project root in the same terminal where `zig` and `raylib` are available.
+- If you use MSYS2 UCRT64, install dependencies there (example):
+
+```bash
+pacman -S --needed mingw-w64-ucrt-x86_64-raylib zig
 ```
 
-### Zig Manual Path
+- Then run:
+
+```bash
+zig build run
+zig build run-engine
+```
+
+### Legacy Zig Script Path
 
 ```bash
 zig run main/GameEngine/src/zig/main.zig -- --all
-./main/LBFE
+zig run main/GameEngine/src/zig/engine_build.zig
+```
+
+If you are already inside `main/GameEngine/src/zig`, use:
+
+```bash
+zig run main.zig -- --all
+zig run engine_build.zig
 ```
 
 ### C Manual Path (Linux)
@@ -229,25 +249,15 @@ The editor lives in `main/GameEngine/` and is focused on creating fully playable
   - `Shift` speed up
   - `Esc` close
 
-## Build And Run (Game Engine)
+## Build And Run (Game Engine - Manual)
 
-### Recommended (Zig Builder)
-
-From project root:
+Recommended:
 
 ```bash
-zig run main/GameEngine/src/zig/engine_build.zig
-./main/GameEngine/src/GameEngine
+zig build run-engine
 ```
 
-From `main/GameEngine/src/zig`:
-
-```bash
-zig run engine_build.zig
-../GameEngine
-```
-
-### Manual Compile (Linux)
+Linux manual compile:
 
 ```bash
 g++ -std=c++17 -O3 \

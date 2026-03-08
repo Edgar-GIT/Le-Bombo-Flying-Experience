@@ -25,6 +25,7 @@ pub fn main() !void {
 
     try args.appendSlice(&.{ "zig", "c++" });
     try appendOptimizationFlags(&args);
+    // Compile all Game Engine modules into a single optimized executable.
     try args.appendSlice(&.{
         "main/GameEngine/src/main/main.cpp",
         "main/GameEngine/src/main/config.cpp",
