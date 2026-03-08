@@ -78,6 +78,20 @@ Build tool options:
 All commands are executed from the repository root.
 `zig build` now runs dependency setup automatically before compiling.
 
+Zero-setup bootstrap (recommended for first run):
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_windows.ps1
+```
+
+Linux/macOS:
+
+```bash
+sh ./scripts/bootstrap.sh
+```
+
 First-time setup only:
 
 ```bash
