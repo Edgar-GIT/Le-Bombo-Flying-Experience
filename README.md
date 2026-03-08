@@ -86,6 +86,18 @@ Windows (PowerShell):
 powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_windows.ps1
 ```
 
+If `powershell` is not recognized, run this in `cmd.exe`:
+
+```cmd
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\bootstrap_windows.ps1
+```
+
+If you use PowerShell 7:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\bootstrap_windows.ps1
+```
+
 Linux/macOS:
 
 ```bash
