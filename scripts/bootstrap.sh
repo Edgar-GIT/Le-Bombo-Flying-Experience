@@ -10,5 +10,4 @@ PROJECT_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 "$SCRIPT_DIR/setup.sh"
 
 cd "$PROJECT_ROOT"
-zig build setup
 zig build run

@@ -2,8 +2,6 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) void {
-    const setup_script = createSetupCommand(b);
-
     const game_script = b.addSystemCommand(&.{
         "zig",
         "run",
@@ -11,7 +9,6 @@ pub fn build(b: *std.Build) void {
         "--",
         "--game",
     });
-    game_script.step.dependOn(&setup_script.step);
     const preview_script = b.addSystemCommand(&.{
         "zig",
         "run",
@@ -19,7 +16,6 @@ pub fn build(b: *std.Build) void {
         "--",
         "--preview",
     });
-    preview_script.step.dependOn(&setup_script.step);
     const all_script = b.addSystemCommand(&.{
         "zig",
         "run",
@@ -27,13 +23,12 @@ pub fn build(b: *std.Build) void {
         "--",
         "--all",
     });
-    all_script.step.dependOn(&setup_script.step);
     const engine_script = b.addSystemCommand(&.{
         "zig",
         "run",
         "main/GameEngine/src/zig/engine_build.zig",
     });
-    engine_script.step.dependOn(&setup_script.step);
+    const setup_script = createSetupCommand(b);
 
     const setup_step = b.step("setup", "Install/check dependencies and configure paths");
     setup_step.dependOn(&setup_script.step);
@@ -70,13 +65,7 @@ pub fn build(b: *std.Build) void {
 
 fn createSetupCommand(b: *std.Build) *std.Build.Step.Run {
     return switch (builtin.os.tag) {
-        .windows => b.addSystemCommand(&.{
-            "powershell",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            "scripts/setup_windows.ps1",
-        }),
+        .windows => b.addSystemCommand(&.{ "cmd", "/C", "scripts\\setup_windows.cmd" }),
         else => b.addSystemCommand(&.{
             "sh",
             "scripts/setup.sh",

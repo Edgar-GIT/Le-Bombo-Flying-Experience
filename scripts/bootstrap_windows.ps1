@@ -32,7 +32,6 @@ if (-not $zigExe) {
 Write-Host "[bootstrap] using zig: $zigExe"
 Push-Location $projectRoot
 try {
-    & $zigExe build setup
     & $zigExe build run
 } finally {
     Pop-Location

@@ -82,7 +82,7 @@ All commands are executed from the repository root.
 Windows (`cmd.exe`):
 
 ```cmd
-C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\bootstrap_windows.ps1
+.\scripts\bootstrap_windows.cmd
 ```
 
 Linux/macOS:
@@ -103,6 +103,37 @@ zig build run-preview  # vehicle previewer
 
 ```bash
 zig build
+```
+
+### Manual Setup Tutorial
+
+Use this if you want to install dependencies yourself first.
+
+Windows (PowerShell):
+
+```powershell
+winget install -e --id zig.zig
+winget install -e --id MSYS2.MSYS2
+C:\msys64\usr\bin\bash.exe -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-raylib"
+$env:RAYLIB_ROOT="C:/msys64/ucrt64"
+$env:RAYLIB_LIB_DIR="C:/msys64/ucrt64/lib"
+$env:RAYLIB_INCLUDE_DIR="C:/msys64/ucrt64/include"
+zig build run
+```
+
+Linux:
+
+```bash
+sudo apt update
+sudo apt install -y zig libraylib-dev build-essential pkg-config
+zig build run
+```
+
+macOS:
+
+```bash
+brew install zig raylib
+zig build run
 ```
 
 ## Game Engine
