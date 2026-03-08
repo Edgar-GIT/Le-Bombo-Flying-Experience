@@ -1,0 +1,7 @@
+{
+  "actions": [
+    {"timestamp":"2026-03-08 12:18:27","action":"session","detail":"Engine editor session started"},
+    {"timestamp":"2026-03-08 12:18:27","action":"log","detail":"Engine editor ready"},
+    {"timestamp":"2026-03-08 12:19:10","action":"log","detail":"select blocks before creating a piece"}
+  ]
+}

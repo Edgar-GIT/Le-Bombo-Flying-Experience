@@ -4,6 +4,7 @@
 #include "../include/gui_workflow.hpp"
 #include "../include/piece_library.hpp"
 #include "../include/persistence.hpp"
+#include "../include/vehicle_import.hpp"
 #include "../include/vehicle_export.hpp"
 #include "../include/workspace_tabs.hpp"
 
@@ -25,6 +26,21 @@ static std::string NextWorkspaceName(WorkspaceKind kind) {
     }
     if (kind == WorkspaceKind::Project) return "pj" + std::to_string(count + 1);
     return "piece " + std::to_string(count + 1);
+}
+
+// returns one readable mirror axis label for toolbar
+static const char *MirrorAxisLabel(MirrorAxis axis) {
+    if (axis == MirrorAxis::X) return "X";
+    if (axis == MirrorAxis::Y) return "Y";
+    return "Z";
+}
+
+// calculates an adaptive button width that fits current text
+static float FitButtonWidth(const char *label, int fontSize, float minWidth, float pad) {
+    if (label == nullptr || label[0] == '\0') return minWidth;
+    float w = (float)MeasureText(label, fontSize) + pad;
+    if (w < minWidth) w = minWidth;
+    return w;
 }
 
 // opens inline rename mode for one workspace tab
@@ -167,7 +183,6 @@ static void DrawWorkspaceTabsStrip(float x, float y, float h, float maxWidth) {
         gState.requestSwitchWorkspaceIndex = requestSwitch;
     }
 
-    DrawWorkspaceTabContextMenu();
 }
 
 // draws dropdown under new button with project and tab actions
@@ -229,11 +244,21 @@ void DrawMainGuiLayout(int sw, int sh,
     DrawRectangle(0, 0, sw, (int)topH, (Color){ 36, 40, 48, 255 });
     DrawLineEx((Vector2){ 0, topH }, (Vector2){ (float)sw, topH }, 1.0f, (Color){ 82, 88, 100, 255 });
 
-    Rectangle newBtn = { 14, 7, 82, 28 };
-    Rectangle openBtn = { 104, 7, 88, 28 };
-    Rectangle saveBtn = { 200, 7, 86, 28 };
-    Rectangle exportBtn = { 294, 7, 98, 28 };
-    Rectangle settingsBtn = { 400, 7, 112, 28 };
+    float topX = 14.0f;
+    const float topY = 7.0f;
+    const float topBtnH = 28.0f;
+    const float topGap = 8.0f;
+    Rectangle newBtn = { topX, topY, FitButtonWidth("New", 17, 64.0f, 24.0f), topBtnH };
+    topX += newBtn.width + topGap;
+    Rectangle openBtn = { topX, topY, FitButtonWidth("Open", 17, 64.0f, 24.0f), topBtnH };
+    topX += openBtn.width + topGap;
+    Rectangle saveBtn = { topX, topY, FitButtonWidth("Save", 17, 64.0f, 24.0f), topBtnH };
+    topX += saveBtn.width + topGap;
+    Rectangle exportBtn = { topX, topY, FitButtonWidth("Export", 17, 78.0f, 24.0f), topBtnH };
+    topX += exportBtn.width + topGap;
+    Rectangle importBtn = { topX, topY, FitButtonWidth("Import", 17, 78.0f, 24.0f), topBtnH };
+    topX += importBtn.width + topGap;
+    Rectangle settingsBtn = { topX, topY, FitButtonWidth("Settings", 17, 90.0f, 24.0f), topBtnH };
 
     if (DrawButton(newBtn, "New", "new project and tab actions")) gState.showNewMenu = !gState.showNewMenu;
     if (DrawButton(openBtn, "Open", "open project from folder")) {
@@ -252,9 +277,8 @@ void DrawMainGuiLayout(int sw, int sh,
         if (!saved) AddLog(gState, "save unavailable open or create a project first");
     }
     if (DrawButton(exportBtn, "Export", "export .vehicle to builds folder")) ExportCurrentVehicle(gState);
+    if (DrawButton(importBtn, "Import", "import .vehicle into current workspace")) ImportVehicleFromPicker(gState);
     if (DrawButton(settingsBtn, "Settings", "open editor settings", gState.showSettings)) gState.showSettings = !gState.showSettings;
-
-    DrawNewMenuDropdown(newBtn);
 
     int titleX = (int)settingsBtn.x + (int)settingsBtn.width + 18;
     if (sw - titleX > 180) DrawText("Le Bombo Game Engine", titleX, 10, 20, (Color){ 230, 233, 240, 255 });
@@ -288,20 +312,24 @@ void DrawMainGuiLayout(int sw, int sh,
     Rectangle btnEye = { 0 };
     if (!compact) btnEye = place(22.0f);
     Rectangle btnPrevBlasts = { 0 };
-    if (!compact) btnPrevBlasts = place(118.0f);
-    Rectangle btnPreview = place(88.0f);
+    if (!compact) btnPrevBlasts = place(FitButtonWidth("Prev Blasts", 15, 104.0f, 24.0f));
+    Rectangle btnPreview = place(FitButtonWidth("Preview", 17, 78.0f, 24.0f));
     Rectangle btnRedo = { 0 };
     Rectangle btnUndo = { 0 };
+    Rectangle btnMirror = { 0 };
+    Rectangle btnMirrorAxis = { 0 };
     if (!veryCompact) {
-        btnRedo = place(58.0f);
-        btnUndo = place(58.0f);
+        btnRedo = place(FitButtonWidth("Redo", 17, 54.0f, 24.0f));
+        btnUndo = place(FitButtonWidth("Undo", 17, 54.0f, 24.0f));
+        btnMirror = place(FitButtonWidth("Mirror", 17, 72.0f, 24.0f));
+        btnMirrorAxis = place(34.0f);
     }
-    Rectangle btnSelect = place(64.0f);
-    Rectangle btnScale = place(58.0f);
-    Rectangle btnRotate = place(58.0f);
-    Rectangle btnMove = place(58.0f);
-    Rectangle btn3D = place(50.0f);
-    Rectangle btn2D = place(50.0f);
+    Rectangle btnSelect = place(FitButtonWidth("Select", 15, 64.0f, 22.0f));
+    Rectangle btnScale = place(FitButtonWidth("Scale", 17, 58.0f, 22.0f));
+    Rectangle btnRotate = place(FitButtonWidth("Rotate", 17, 62.0f, 22.0f));
+    Rectangle btnMove = place(FitButtonWidth("Move", 17, 58.0f, 22.0f));
+    Rectangle btn3D = place(FitButtonWidth("3D", 17, 44.0f, 18.0f));
+    Rectangle btn2D = place(FitButtonWidth("2D", 17, 44.0f, 18.0f));
     Rectangle btnLeft = place(24.0f);
 
     float tabsMax = actionX - 10.0f;
@@ -328,6 +356,14 @@ void DrawMainGuiLayout(int sw, int sh,
     if (DrawButton(btnSelect, "Select", "rectangle mode for multi-select", gState.selectMode, 15)) gState.selectMode = !gState.selectMode;
 
     if (!veryCompact) {
+        if (DrawButton(btnMirror, "Mirror", "create mirrored copy of selected blocks on selected axis")) {
+            MirrorSelection(gState, gState.mirrorAxis);
+        }
+        if (DrawButton(btnMirrorAxis, MirrorAxisLabel(gState.mirrorAxis), "toggle mirror axis X Y Z", false, 15)) {
+            if (gState.mirrorAxis == MirrorAxis::X) gState.mirrorAxis = MirrorAxis::Y;
+            else if (gState.mirrorAxis == MirrorAxis::Y) gState.mirrorAxis = MirrorAxis::Z;
+            else gState.mirrorAxis = MirrorAxis::X;
+        }
         if (DrawButton(btnUndo, "Undo", "undo latest scene action (Ctrl+Z)")) {
             if (!UndoLastAction(gState)) AddLog(gState, "undo unavailable");
         }
@@ -419,6 +455,12 @@ void DrawMainGuiLayout(int sw, int sh,
 
     // draws settings popup over workspace when enabled
     if (gState.showSettings) DrawSettingsPopup((Rectangle){ 14.0f, bodyTop + 10.0f, 340.0f, 352.0f }, gState);
+
+    // draws tab context menu over main layout so it is never hidden by viewport
+    DrawWorkspaceTabContextMenu();
+
+    // draws dropdown over main layout so menu is never hidden by viewport
+    DrawNewMenuDropdown(newBtn);
 
     // draws delete confirmation and project dialogs
     DrawDeleteConfirmPopup(gState);

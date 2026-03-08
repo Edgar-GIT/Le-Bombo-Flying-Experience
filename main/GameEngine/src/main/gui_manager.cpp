@@ -378,6 +378,215 @@ static bool PasteClipboard(EditorGuiState &st) {
     return true;
 }
 
+// deletes one object and rewires parents shotpoints and selection indexes
+static void RemoveObjectAt(EditorGuiState &st, int index) {
+    if (index < 0 || index >= (int)st.objects.size()) return;
+    st.objects.erase(st.objects.begin() + index);
+
+    for (EditorObject &obj : st.objects) {
+        if (obj.parentIndex == index) obj.parentIndex = -1;
+        else if (obj.parentIndex > index) obj.parentIndex--;
+    }
+
+    for (Shotpoint &sp : st.shotpoints) {
+        if (sp.objectIndex == index) sp.objectIndex = -1;
+        else if (sp.objectIndex > index) sp.objectIndex--;
+    }
+
+    for (int &idx : st.selectedIndices) {
+        if (idx == index) idx = -1;
+        else if (idx > index) idx--;
+    }
+    std::vector<int> filtered;
+    filtered.reserve(st.selectedIndices.size());
+    for (int idx : st.selectedIndices) {
+        if (idx >= 0 && idx < (int)st.objects.size()) filtered.push_back(idx);
+    }
+    st.selectedIndices = filtered;
+
+    if (st.selectedIndex == index) st.selectedIndex = -1;
+    else if (st.selectedIndex > index) st.selectedIndex--;
+}
+
+// duplicates the selected objects and associated shotpoints with small offset
+static bool DuplicateSelection(EditorGuiState &st) {
+    std::vector<int> indices = BuildSelectionIndices(st);
+    if (indices.empty()) {
+        AddLog(st, "duplicate ignored no block selected");
+        return false;
+    }
+
+    std::unordered_map<int, int> remap;
+    std::vector<int> newSelection;
+    newSelection.reserve(indices.size());
+
+    Vector3 offset = { 1.25f, 0.0f, 1.25f };
+
+    for (int idx : indices) {
+        if (idx < 0 || idx >= (int)st.objects.size()) continue;
+        EditorObject copy = st.objects[idx];
+        copy.name += "_copy";
+        copy.position = Vector3Add(copy.position, offset);
+        int newIdx = (int)st.objects.size();
+        remap[idx] = newIdx;
+        st.objects.push_back(copy);
+        newSelection.push_back(newIdx);
+    }
+
+    for (size_t i = 0; i < indices.size(); i++) {
+        int srcIdx = indices[i];
+        auto itCopy = remap.find(srcIdx);
+        if (itCopy == remap.end()) continue;
+        int dstIdx = itCopy->second;
+        if (dstIdx < 0 || dstIdx >= (int)st.objects.size()) continue;
+        int srcParent = st.objects[srcIdx].parentIndex;
+        auto itParent = remap.find(srcParent);
+        st.objects[dstIdx].parentIndex = (itParent != remap.end()) ? itParent->second : srcParent;
+    }
+
+    for (const Shotpoint &sp : st.shotpoints) {
+        auto it = remap.find(sp.objectIndex);
+        if (it == remap.end()) continue;
+        Shotpoint copy = sp;
+        copy.objectIndex = it->second;
+        st.shotpoints.push_back(copy);
+    }
+
+    st.selectedIndices = newSelection;
+    st.selectedIndex = st.selectedIndices.empty() ? -1 : st.selectedIndices[0];
+    st.renameIndex = -1;
+    st.renameFromInspector = false;
+    st.colorSyncIndex = -1;
+
+    if (st.activeWorkspaceIndex >= 0 && st.activeWorkspaceIndex < (int)st.workspaces.size()) {
+        st.workspaces[st.activeWorkspaceIndex].dirty = true;
+    }
+    MarkProjectDirty(st);
+
+    char msg[192] = { 0 };
+    std::snprintf(msg, sizeof(msg), "duplicated %d block(s)", (int)newSelection.size());
+    AddLog(st, msg);
+    RecordCacheAction(st, "duplicate", msg);
+    return !newSelection.empty();
+}
+
+// cuts selected objects into clipboard and removes them from scene
+static bool CutSelection(EditorGuiState &st) {
+    std::vector<int> indices = BuildSelectionIndices(st);
+    if (indices.empty()) {
+        AddLog(st, "cut ignored no block selected");
+        return false;
+    }
+    if (!CopySelectionToClipboard(st)) return false;
+
+    for (int i = (int)indices.size() - 1; i >= 0; i--) {
+        RemoveObjectAt(st, indices[i]);
+    }
+
+    st.selectedIndices.clear();
+    st.selectedIndex = -1;
+    st.renameIndex = -1;
+    st.renameFromInspector = false;
+    st.colorSyncIndex = -1;
+
+    if (st.activeWorkspaceIndex >= 0 && st.activeWorkspaceIndex < (int)st.workspaces.size()) {
+        st.workspaces[st.activeWorkspaceIndex].dirty = true;
+    }
+    MarkProjectDirty(st);
+
+    char msg[192] = { 0 };
+    std::snprintf(msg, sizeof(msg), "cut %d block(s) to clipboard", (int)indices.size());
+    AddLog(st, msg);
+    RecordCacheAction(st, "cut", msg);
+    return true;
+}
+
+// mirrors selected objects into new mirrored copies around selection center
+bool MirrorSelection(EditorGuiState &st, MirrorAxis axis) {
+    std::vector<int> indices = BuildSelectionIndices(st);
+    if (indices.empty()) {
+        AddLog(st, "mirror ignored no block selected");
+        return false;
+    }
+
+    Vector3 center = { 0.0f, 0.0f, 0.0f };
+    for (int idx : indices) {
+        if (idx < 0 || idx >= (int)st.objects.size()) continue;
+        center = Vector3Add(center, st.objects[idx].position);
+    }
+    center = Vector3Scale(center, 1.0f / (float)indices.size());
+
+    std::unordered_map<int, int> remap;
+    std::vector<int> newSelection;
+    newSelection.reserve(indices.size());
+
+    for (int idx : indices) {
+        if (idx < 0 || idx >= (int)st.objects.size()) continue;
+        EditorObject copy = st.objects[idx];
+        copy.name += "_mir";
+
+        Vector3 local = Vector3Subtract(copy.position, center);
+        if (axis == MirrorAxis::X) {
+            local.x = -local.x;
+            copy.rotation.y = -copy.rotation.y;
+            copy.rotation.z = -copy.rotation.z;
+        } else if (axis == MirrorAxis::Y) {
+            local.y = -local.y;
+            copy.rotation.x = -copy.rotation.x;
+            copy.rotation.z = -copy.rotation.z;
+        } else {
+            local.z = -local.z;
+            copy.rotation.x = -copy.rotation.x;
+            copy.rotation.y = -copy.rotation.y;
+        }
+        copy.position = Vector3Add(center, local);
+
+        int newIdx = (int)st.objects.size();
+        remap[idx] = newIdx;
+        st.objects.push_back(copy);
+        newSelection.push_back(newIdx);
+    }
+
+    for (int srcIdx : indices) {
+        auto itCopy = remap.find(srcIdx);
+        if (itCopy == remap.end()) continue;
+        int dstIdx = itCopy->second;
+        if (dstIdx < 0 || dstIdx >= (int)st.objects.size()) continue;
+        int srcParent = st.objects[srcIdx].parentIndex;
+        auto itParent = remap.find(srcParent);
+        st.objects[dstIdx].parentIndex = (itParent != remap.end()) ? itParent->second : srcParent;
+    }
+
+    for (const Shotpoint &sp : st.shotpoints) {
+        auto it = remap.find(sp.objectIndex);
+        if (it == remap.end()) continue;
+        Shotpoint copy = sp;
+        copy.objectIndex = it->second;
+        copy.localPos = (axis == MirrorAxis::X) ? (Vector3){ -copy.localPos.x, copy.localPos.y, copy.localPos.z } :
+                        (axis == MirrorAxis::Y) ? (Vector3){ copy.localPos.x, -copy.localPos.y, copy.localPos.z } :
+                                                  (Vector3){ copy.localPos.x, copy.localPos.y, -copy.localPos.z };
+        st.shotpoints.push_back(copy);
+    }
+
+    st.selectedIndices = newSelection;
+    st.selectedIndex = st.selectedIndices.empty() ? -1 : st.selectedIndices[0];
+    st.renameIndex = -1;
+    st.renameFromInspector = false;
+    st.colorSyncIndex = -1;
+
+    if (st.activeWorkspaceIndex >= 0 && st.activeWorkspaceIndex < (int)st.workspaces.size()) {
+        st.workspaces[st.activeWorkspaceIndex].dirty = true;
+    }
+    MarkProjectDirty(st);
+
+    const char *axisName = (axis == MirrorAxis::X) ? "X" : (axis == MirrorAxis::Y) ? "Y" : "Z";
+    char msg[192] = { 0 };
+    std::snprintf(msg, sizeof(msg), "mirrored %d block(s) on %s axis", (int)newSelection.size(), axisName);
+    AddLog(st, msg);
+    RecordCacheAction(st, "mirror", msg);
+    return !newSelection.empty();
+}
+
 // writes the current in-memory action list to the temporary json cache file
 void FlushSessionCache(EditorGuiState &st) {
     if (!st.cacheInitialized || st.cacheFilePath.empty()) return;
@@ -785,6 +994,7 @@ static void InitState() {
     gState.colorVal = 1.0f;
     gState.colorSyncIndex = -1;
     gState.vehicleForwardYawDeg = 0.0f;
+    gState.mirrorAxis = MirrorAxis::X;
 
     gState.shotpointPlacementAxis = GizmoAxis::None;
     gState.shotpointPlacementDrag = false;
@@ -880,6 +1090,12 @@ void DrawEngineGuiLayout(float dt) {
         }
         if (ctrlDown && IsKeyPressed(KEY_V)) {
             PasteClipboard(gState);
+        }
+        if (ctrlDown && IsKeyPressed(KEY_X)) {
+            CutSelection(gState);
+        }
+        if (ctrlDown && IsKeyPressed(KEY_D)) {
+            DuplicateSelection(gState);
         }
 
         if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_Z)) {

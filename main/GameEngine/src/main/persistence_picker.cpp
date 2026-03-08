@@ -58,3 +58,41 @@ std::string PickFolderPathNative() {
     return "";
 #endif
 }
+
+// tenta abrir seletor nativo de ficheiro e devolve o caminho
+std::string PickFilePathNative(const char *title, const char *pattern) {
+    const char *safeTitle = (title && title[0]) ? title : "open file";
+    const char *safePattern = (pattern && pattern[0]) ? pattern : "*";
+
+#if defined(__linux__)
+    char cmd[1024] = { 0 };
+    std::snprintf(cmd, sizeof(cmd),
+                  "zenity --file-selection --title='%s' --file-filter='files | %s' 2>/dev/null",
+                  safeTitle, safePattern);
+    std::string out = RunOneCommand(cmd);
+    if (!out.empty()) return out;
+
+    std::snprintf(cmd, sizeof(cmd),
+                  "kdialog --getopenfilename . \"%s|files\" 2>/dev/null",
+                  safePattern);
+    out = RunOneCommand(cmd);
+    if (!out.empty()) return out;
+    return "";
+#elif defined(_WIN32)
+    char cmd[2048] = { 0 };
+    std::snprintf(cmd, sizeof(cmd),
+                  "powershell -NoProfile -Command \"Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.Title='%s'; $f.Filter='Files|%s'; if($f.ShowDialog() -eq 'OK'){Write-Output $f.FileName}\" 2>NUL",
+                  safeTitle, safePattern);
+    return RunOneCommand(cmd);
+#elif defined(__APPLE__)
+    char cmd[2048] = { 0 };
+    std::snprintf(cmd, sizeof(cmd),
+                  "osascript -e 'set chosenFile to choose file with prompt \"%s\"' -e 'POSIX path of chosenFile' 2>/dev/null",
+                  safeTitle);
+    return RunOneCommand(cmd);
+#else
+    (void)safeTitle;
+    (void)safePattern;
+    return "";
+#endif
+}

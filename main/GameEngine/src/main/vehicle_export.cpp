@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <unordered_set>
 
 // resolve repository root folder
 static std::filesystem::path ResolveProjectRootPath() {
@@ -30,6 +31,21 @@ static std::string SanitizeName(const std::string &raw) {
         else if (c == ' ') out.push_back('_');
     }
     if (out.empty()) out = "vehicle";
+    return out;
+}
+
+// normalize block names to detect duplicates independent from case and spaces
+static std::string NormalizeObjectName(const std::string &raw) {
+    size_t a = 0;
+    while (a < raw.size() && std::isspace((unsigned char)raw[a])) a++;
+    size_t b = raw.size();
+    while (b > a && std::isspace((unsigned char)raw[b - 1])) b--;
+
+    std::string out;
+    out.reserve(b - a);
+    for (size_t i = a; i < b; i++) {
+        out.push_back((char)std::tolower((unsigned char)raw[i]));
+    }
     return out;
 }
 
@@ -71,6 +87,29 @@ bool ExportCurrentVehicle(EditorGuiState &st) {
 
     if (st.objects.empty()) {
         AddLog(st, "export unavailable add at least one block");
+        return false;
+    }
+
+    std::unordered_set<std::string> usedNames;
+    for (const EditorObject &obj : st.objects) {
+        std::string n = NormalizeObjectName(obj.name);
+        if (n.empty()) {
+            AddLog(st, "export unavailable one or more blocks have empty names");
+            return false;
+        }
+        if (!usedNames.insert(n).second) {
+            AddLog(st, "export unavailable duplicated block names detected");
+            return false;
+        }
+    }
+
+    int activeShotpoints = 0;
+    for (const Shotpoint &sp : st.shotpoints) {
+        bool validOwner = sp.objectIndex >= 0 && sp.objectIndex < (int)st.objects.size();
+        if (sp.enabled && validOwner) activeShotpoints++;
+    }
+    if (activeShotpoints <= 0) {
+        AddLog(st, "export unavailable add at least one active shotpoint");
         return false;
     }
 

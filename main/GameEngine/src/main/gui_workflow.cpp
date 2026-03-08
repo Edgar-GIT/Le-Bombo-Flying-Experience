@@ -6,6 +6,7 @@
 #include "raymath.h"
 #include "rlgl.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -27,6 +28,37 @@ static std::string BuildObjectName(PrimitiveKind kind, const std::vector<EditorO
     char name[64] = { 0 };
     std::snprintf(name, sizeof(name), "%s_%02d", base.c_str(), count + 1);
     return std::string(name);
+}
+
+// shortens one absolute path into relative like main/GameEngine/... and trims to fit width
+static std::string BuildCompactPathLabel(const std::string &path, float maxWidth, int fontSize) {
+    if (path.empty()) return "pieces path: (not set)";
+
+    std::string normalized = path;
+    std::replace(normalized.begin(), normalized.end(), '\\', '/');
+
+    const std::string marker = "/main/GameEngine/";
+    size_t markerPos = normalized.find(marker);
+    if (markerPos != std::string::npos && markerPos + 1 < normalized.size()) {
+        normalized = normalized.substr(markerPos + 1);
+    }
+
+    if (MeasureText(normalized.c_str(), fontSize) <= (int)maxWidth) return normalized;
+
+    const std::string ellipsis = "...";
+    size_t keepFront = std::min<size_t>(24, normalized.size());
+    size_t keepBack = std::min<size_t>(24, normalized.size() - std::min<size_t>(24, normalized.size()));
+    if (keepBack < 6) keepBack = std::min<size_t>(12, normalized.size());
+
+    std::string compact = normalized.substr(0, keepFront) + ellipsis +
+                          normalized.substr(normalized.size() - keepBack);
+    while (MeasureText(compact.c_str(), fontSize) > (int)maxWidth && (keepFront > 6 || keepBack > 6)) {
+        if (keepFront >= keepBack && keepFront > 6) keepFront--;
+        else if (keepBack > 6) keepBack--;
+        compact = normalized.substr(0, keepFront) + ellipsis +
+                  normalized.substr(normalized.size() - keepBack);
+    }
+    return compact;
 }
 
 static Vector3 GetSpawnPositionAtTarget(const EditorGuiState &st, PrimitiveKind kind) {
@@ -1059,9 +1091,9 @@ void DrawSceneTab(Rectangle panelRect, EditorGuiState &st) {
     DrawRectangle((int)panelRect.x, (int)panelRect.y, (int)panelRect.width, 34, (Color){ 43, 48, 57, 255 });
     DrawText("Scene Manager", (int)panelRect.x + 10, (int)panelRect.y + 8, 20, (Color){ 225, 231, 240, 255 });
 
-    Rectangle layerToggle = { panelRect.x + 8.0f, panelRect.y + 40.0f, 84.0f, 24.0f };
-    Rectangle layerAdd = { panelRect.x + 98.0f, panelRect.y + 40.0f, 56.0f, 24.0f };
-    Rectangle layerAssign = { panelRect.x + 160.0f, panelRect.y + 40.0f, panelRect.width - 168.0f, 24.0f };
+    Rectangle layerToggle = { panelRect.x + 8.0f, panelRect.y + 40.0f, 96.0f, 24.0f };
+    Rectangle layerAdd = { panelRect.x + 110.0f, panelRect.y + 40.0f, 52.0f, 24.0f };
+    Rectangle layerAssign = { panelRect.x + 8.0f, panelRect.y + 68.0f, panelRect.width - 16.0f, 24.0f };
     if (DrawButton(layerToggle, st.showLayerPanel ? "Layers on" : "Layers off", "toggle layer panel", st.showLayerPanel, 14)) {
         st.showLayerPanel = !st.showLayerPanel;
     }
@@ -1074,14 +1106,14 @@ void DrawSceneTab(Rectangle panelRect, EditorGuiState &st) {
         st.layers.push_back(layer);
         st.activeLayerIndex = (int)st.layers.size() - 1;
     }
-    if (DrawButton(layerAssign, "set selected to active layer", "move selected block into active layer", false, 14)) {
+    if (DrawButton(layerAssign, "set selected to active layer", "move selected block into active layer", false, 13)) {
         if (st.selectedIndex >= 0 && st.selectedIndex < (int)st.objects.size() &&
             st.activeLayerIndex >= 0 && st.activeLayerIndex < (int)st.layers.size()) {
             st.objects[st.selectedIndex].layerIndex = st.activeLayerIndex;
         }
     }
 
-    float rowY = panelRect.y + 70.0f;
+    float rowY = panelRect.y + 98.0f;
     if (st.showLayerPanel) {
         Rectangle layerList = { panelRect.x + 8.0f, rowY, panelRect.width - 16.0f, 92.0f };
         DrawRectangleRounded(layerList, 0.07f, 6, (Color){ 29, 33, 40, 255 });
@@ -1366,7 +1398,8 @@ void DrawMakePieceTab(Rectangle panelRect, EditorGuiState &st, const Rectangle &
     if (DrawButton(reloadBtn, "reload", "reload .piece files from folder", false, 14)) ReloadPieceLibrary(st);
     if (DrawButton(saveBtn, "save", "save active piece tab", false, 14)) SaveActivePieceWorkspace(st);
 
-    DrawText(st.piecesRootPath.c_str(), (int)panelRect.x + 10, (int)panelRect.y + 72, 14, (Color){ 170, 180, 196, 255 });
+    const std::string pathLabel = BuildCompactPathLabel(st.piecesRootPath, panelRect.width - 20.0f, 14);
+    DrawText(pathLabel.c_str(), (int)panelRect.x + 10, (int)panelRect.y + 72, 14, (Color){ 170, 180, 196, 255 });
 
     float dirY = panelRect.y + 92.0f;
     DrawText("Vehicle Forward", (int)panelRect.x + 10, (int)dirY, 17, (Color){ 214, 222, 236, 255 });

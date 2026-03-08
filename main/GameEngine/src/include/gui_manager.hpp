@@ -26,6 +26,7 @@ Vector3 ColorToHSVf(Color c);
 bool UndoLastAction(EditorGuiState &st);
 bool RedoLastAction(EditorGuiState &st);
 void ResetHistoryBaseline(EditorGuiState &st);
+bool MirrorSelection(EditorGuiState &st, MirrorAxis axis);
 
 void DrawEngineGuiLayout(float dt);
 void ShutdownEngineGuiLayout();

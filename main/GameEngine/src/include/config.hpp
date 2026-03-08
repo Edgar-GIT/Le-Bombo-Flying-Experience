@@ -33,6 +33,12 @@ enum class GizmoAxis {
     Z
 };
 
+enum class MirrorAxis {
+    X = 0,
+    Y,
+    Z
+};
+
 enum class PrimitiveKind {
     Cube = 0,
     Sphere,
@@ -246,6 +252,7 @@ struct EditorGuiState {
     int colorSyncIndex;
 
     float vehicleForwardYawDeg;
+    MirrorAxis mirrorAxis;
 
     GizmoAxis shotpointPlacementAxis;
     bool shotpointPlacementDrag;

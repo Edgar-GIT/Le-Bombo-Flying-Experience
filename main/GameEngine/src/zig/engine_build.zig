@@ -33,6 +33,7 @@ pub fn main() !void {
         "main/GameEngine/src/main/gui_shotpoints.cpp",
         "main/GameEngine/src/main/main_gui.cpp",
         "main/GameEngine/src/main/vehicle_export.cpp",
+        "main/GameEngine/src/main/vehicle_import.cpp",
         "main/GameEngine/src/main/persistence.cpp",
         "main/GameEngine/src/main/persistence_io.cpp",
         "main/GameEngine/src/main/persistence_picker.cpp",

@@ -4,5 +4,6 @@
 #include <string>
 
 std::string PickFolderPathNative();
+std::string PickFilePathNative(const char *title, const char *pattern);
 
 #endif
