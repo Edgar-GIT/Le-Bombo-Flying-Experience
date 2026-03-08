@@ -66,7 +66,7 @@ static int build_game(const char *platform) {
     snprintf(cmd, sizeof(cmd),
              "gcc -std=c99 -O2 "
              "main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c "
-             "main/src/atacks.c main/src/screens.c main/src/config.c "
+             "main/src/atacks.c main/src/screens.c main/src/config.c main/src/custom_vehicle.c "
              "-o \"%s\" "
              "-I<raylib_include_path> -L<raylib_lib_path> "
              "-lraylib -lopengl32 -lgdi32 -lwinmm",
@@ -76,7 +76,7 @@ static int build_game(const char *platform) {
     snprintf(cmd, sizeof(cmd),
              "clang -std=c99 -O2 "
              "main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c "
-             "main/src/atacks.c main/src/screens.c main/src/config.c "
+             "main/src/atacks.c main/src/screens.c main/src/config.c main/src/custom_vehicle.c "
              "-o \"%s\" "
              "-I/opt/homebrew/include -L/opt/homebrew/lib -lraylib "
              "-framework OpenGL -framework Cocoa -framework IOKit "
@@ -87,7 +87,7 @@ static int build_game(const char *platform) {
     snprintf(cmd, sizeof(cmd),
              "gcc -std=c99 -O2 "
              "main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c "
-             "main/src/atacks.c main/src/screens.c main/src/config.c "
+             "main/src/atacks.c main/src/screens.c main/src/config.c main/src/custom_vehicle.c "
              "-o \"%s\" "
              "-lraylib -lGL -lm -lpthread -ldl -lrt -lX11",
              out_file);
@@ -110,7 +110,7 @@ static int build_previewer(const char *platform) {
     snprintf(out_file, sizeof(out_file), "%s%svehicle_previewer.exe", out_dir, PATH_SEP);
     snprintf(cmd, sizeof(cmd),
              "gcc -std=c99 -O2 "
-             "main/tools/src/vehicle_previewer.c main/src/obj.c main/src/config.c "
+             "main/tools/src/vehicle_previewer.c main/src/obj.c main/src/config.c main/src/custom_vehicle.c "
              "-I main/src -o \"%s\" "
              "-I<raylib_include_path> -L<raylib_lib_path> "
              "-lraylib -lopengl32 -lgdi32 -lwinmm",
@@ -119,7 +119,7 @@ static int build_previewer(const char *platform) {
     snprintf(out_file, sizeof(out_file), "%s%svehicle_previewer", out_dir, PATH_SEP);
     snprintf(cmd, sizeof(cmd),
              "clang -std=c99 -O2 "
-             "main/tools/src/vehicle_previewer.c main/src/obj.c main/src/config.c "
+             "main/tools/src/vehicle_previewer.c main/src/obj.c main/src/config.c main/src/custom_vehicle.c "
              "-I main/src -o \"%s\" "
              "-I/opt/homebrew/include -L/opt/homebrew/lib -lraylib "
              "-framework OpenGL -framework Cocoa -framework IOKit "
@@ -129,7 +129,7 @@ static int build_previewer(const char *platform) {
     snprintf(out_file, sizeof(out_file), "%s%svehicle_previewer", out_dir, PATH_SEP);
     snprintf(cmd, sizeof(cmd),
              "gcc -std=c99 -O2 "
-             "main/tools/src/vehicle_previewer.c main/src/obj.c main/src/config.c "
+             "main/tools/src/vehicle_previewer.c main/src/obj.c main/src/config.c main/src/custom_vehicle.c "
              "-I main/src -o \"%s\" "
              "-lraylib -lGL -lm -lpthread -ldl -lrt -lX11",
              out_file);

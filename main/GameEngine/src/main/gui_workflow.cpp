@@ -1,143 +1,18 @@
-#include "../include/gui.hpp"
-#include "../include/config.hpp"
+#include "../include/gui_workflow.hpp"
+#include "../include/gui_manager.hpp"
+#include "../include/piece_library.hpp"
+#include "../include/workspace_tabs.hpp"
 
-#include "raylib.h"
 #include "raymath.h"
 #include "rlgl.h"
 
 #include <cmath>
-#include <ctime>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
 
-static EditorGuiState gState = {};
-static const char *gHoverTooltip = nullptr;
-static bool gBlockUiInput = false;
-
-static float Clampf(float v, float minV, float maxV) {
-    if (v < minV) return minV;
-    if (v > maxV) return maxV;
-    return v;
-}
-
-static float LerpF(float a, float b, float t) {
-    return a + (b - a) * t;
-}
-
-static void SetHoverTooltip(bool hover, const char *text) {
-    if (hover && text != nullptr) gHoverTooltip = text;
-}
-
-static void AddLog(EditorGuiState &st, const char *message) {
-    EngineLogEntry entry = {};
-    std::time_t now = std::time(nullptr);
-    std::tm tmNow = {};
-#if defined(_WIN32)
-    localtime_s(&tmNow, &now);
-#else
-    localtime_r(&now, &tmNow);
-#endif
-    std::strftime(entry.timestamp, sizeof(entry.timestamp), "%Y-%m-%d %H:%M:%S", &tmNow);
-    entry.text = message ? message : "";
-    st.logs.push_back(entry);
-    if ((int)st.logs.size() > kUserConfig.maxLogEntries) {
-        st.logs.erase(st.logs.begin(), st.logs.begin() + kUserConfig.trimLogEntries);
-    }
-    std::printf("[%s] %s\n", entry.timestamp, entry.text.c_str());
-}
-
-static void UpdateTextFieldBuffer(char *buffer, size_t bufferSize, bool *submit, bool *cancel) {
-    int key = GetCharPressed();
-    while (key > 0) {
-        size_t len = std::strlen(buffer);
-        if (key >= 32 && key <= 126 && len + 1 < bufferSize) {
-            buffer[len] = (char)key;
-            buffer[len + 1] = '\0';
-        }
-        key = GetCharPressed();
-    }
-
-    if (IsKeyPressed(KEY_BACKSPACE)) {
-        size_t len = std::strlen(buffer);
-        if (len > 0) buffer[len - 1] = '\0';
-    }
-
-    if (submit) *submit = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER);
-    if (cancel) *cancel = IsKeyPressed(KEY_ESCAPE);
-}
-
-static const PrimitiveDef *FindPrimitiveDef(PrimitiveKind kind) {
-    for (int i = 0; i < kPrimitiveDefCount; i++) {
-        const PrimitiveDef &def = kPrimitiveDefs[i];
-        if (def.kind == kind) return &def;
-    }
-    return nullptr;
-}
-
-static bool PrimitivePassesFilter(const PrimitiveDef &def, FilterMode mode) {
-    if (mode == FilterMode::All) return true;
-    if (mode == FilterMode::TwoD) return def.is2D;
-    return !def.is2D;
-}
-
-static bool DrawButton(Rectangle rect, const char *label, const char *tooltip, bool active = false, int fontSize = 17) {
-    bool hover = CheckCollisionPointRec(GetMousePosition(), rect);
-    SetHoverTooltip(hover, tooltip);
-
-    Color fill = (Color){ 56, 61, 71, 255 };
-    Color border = (Color){ 96, 103, 118, 255 };
-    if (active) {
-        fill = (Color){ 84, 104, 142, 255 };
-        border = (Color){ 126, 162, 226, 255 };
-    } else if (hover) {
-        fill = (Color){ 74, 80, 92, 255 };
-    }
-
-    DrawRectangleRounded(rect, 0.18f, 6, fill);
-    DrawRectangleRoundedLinesEx(rect, 0.18f, 6, 1.4f, border);
-
-    int tw = MeasureText(label, fontSize);
-    DrawText(label,
-             (int)(rect.x + rect.width * 0.5f - tw * 0.5f),
-             (int)(rect.y + rect.height * 0.5f - fontSize * 0.5f),
-             fontSize, RAYWHITE);
-
-    return !gBlockUiInput && hover && IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-}
-
-static float DistancePointToSegment(Vector2 p, Vector2 a, Vector2 b) {
-    Vector2 ab = Vector2Subtract(b, a);
-    float abLenSq = ab.x * ab.x + ab.y * ab.y;
-    if (abLenSq <= 0.00001f) return Vector2Distance(p, a);
-    float t = ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / abLenSq;
-    t = Clampf(t, 0.0f, 1.0f);
-    Vector2 proj = { a.x + ab.x * t, a.y + ab.y * t };
-    return Vector2Distance(p, proj);
-}
-
-static Vector3 ColorToHSVf(Color c) {
-    float r = c.r / 255.0f;
-    float g = c.g / 255.0f;
-    float b = c.b / 255.0f;
-    float maxc = fmaxf(r, fmaxf(g, b));
-    float minc = fminf(r, fminf(g, b));
-    float d = maxc - minc;
-
-    float h = 0.0f;
-    if (d > 0.00001f) {
-        if (maxc == r) h = 60.0f * fmodf(((g - b) / d), 6.0f);
-        else if (maxc == g) h = 60.0f * (((b - r) / d) + 2.0f);
-        else h = 60.0f * (((r - g) / d) + 4.0f);
-    }
-    if (h < 0.0f) h += 360.0f;
-
-    float s = (maxc <= 0.00001f) ? 0.0f : (d / maxc);
-    float v = maxc;
-    return { h, s, v };
-}
-
+// implements workflow logic object operations viewport rendering panels and preview
 static std::string PrimitiveBaseName(PrimitiveKind kind) {
     const PrimitiveDef *def = FindPrimitiveDef(kind);
     return def ? std::string(def->label) : std::string("Block");
@@ -177,7 +52,24 @@ static Vector3 GetMouseWorldOnGround(const EditorGuiState &st) {
     return hit;
 }
 
-static bool RayPlaneIntersection(Ray ray, Vector3 planePoint, Vector3 planeNormal, Vector3 *hitOut) {
+// checks if one object layer is currently visible
+static bool IsLayerVisible(const EditorGuiState &st, int layerIndex) {
+    if (layerIndex < 0 || layerIndex >= (int)st.layers.size()) return true;
+    return st.layers[layerIndex].visible;
+}
+
+// computes hierarchy depth for one object by parent chain
+static int ComputeHierarchyDepth(const std::vector<EditorObject> &objects, int index) {
+    int depth = 0;
+    int parent = (index >= 0 && index < (int)objects.size()) ? objects[index].parentIndex : -1;
+    while (parent >= 0 && parent < (int)objects.size() && depth < 6) {
+        depth++;
+        parent = objects[parent].parentIndex;
+    }
+    return depth;
+}
+
+bool RayPlaneIntersection(Ray ray, Vector3 planePoint, Vector3 planeNormal, Vector3 *hitOut) {
     float denom = Vector3DotProduct(ray.direction, planeNormal);
     if (fabsf(denom) < 0.00001f) return false;
 
@@ -200,6 +92,8 @@ static void SpawnObject(EditorGuiState &st, PrimitiveKind kind, Vector3 pos, boo
     obj.is2D = def->is2D;
     obj.visible = true;
     obj.anchored = false;
+    obj.layerIndex = st.activeLayerIndex >= 0 && st.activeLayerIndex < (int)st.layers.size() ? st.activeLayerIndex : 0;
+    obj.parentIndex = -1;
     obj.position = pos;
     obj.rotation = { 0.0f, 0.0f, 0.0f };
     obj.scale = { 1.0f, 1.0f, 1.0f };
@@ -221,15 +115,24 @@ static void SpawnObject(EditorGuiState &st, PrimitiveKind kind, Vector3 pos, boo
 
     if (selectNew) {
         st.selectedIndex = (int)st.objects.size() - 1;
+        st.selectedIndices.clear();
+        st.selectedIndices.push_back(st.selectedIndex);
         st.colorSyncIndex = -1;
     }
 }
 
-static void RequestDeleteObject(EditorGuiState &st, int index) {
+void RequestDeleteObject(EditorGuiState &st, int index) {
     if (index < 0 || index >= (int)st.objects.size()) return;
     st.showDeleteConfirm = true;
     st.deleteTargetIndex = index;
     std::snprintf(st.deleteTargetName, sizeof(st.deleteTargetName), "%s", st.objects[index].name.c_str());
+}
+
+void RequestDeleteSelection(EditorGuiState &st) {
+    if (st.selectedIndices.empty()) return;
+    st.showDeleteConfirm = true;
+    st.deleteTargetIndex = -2;
+    std::snprintf(st.deleteTargetName, sizeof(st.deleteTargetName), "%d selected blocks", (int)st.selectedIndices.size());
 }
 
 static void DeleteObjectAtIndex(EditorGuiState &st, int index) {
@@ -237,6 +140,27 @@ static void DeleteObjectAtIndex(EditorGuiState &st, int index) {
 
     std::string deletedName = st.objects[index].name;
     st.objects.erase(st.objects.begin() + index);
+
+    for (EditorObject &obj : st.objects) {
+        if (obj.parentIndex == index) obj.parentIndex = -1;
+        else if (obj.parentIndex > index) obj.parentIndex--;
+    }
+
+    for (Shotpoint &sp : st.shotpoints) {
+        if (sp.objectIndex == index) sp.objectIndex = -1;
+        else if (sp.objectIndex > index) sp.objectIndex--;
+    }
+
+    for (int &idx : st.selectedIndices) {
+        if (idx == index) idx = -1;
+        else if (idx > index) idx--;
+    }
+    std::vector<int> filtered;
+    filtered.reserve(st.selectedIndices.size());
+    for (int idx : st.selectedIndices) {
+        if (idx >= 0 && idx < (int)st.objects.size()) filtered.push_back(idx);
+    }
+    st.selectedIndices = filtered;
 
     if (st.selectedIndex == index) {
         st.selectedIndex = -1;
@@ -258,13 +182,40 @@ static void DeleteObjectAtIndex(EditorGuiState &st, int index) {
     AddLog(st, logMsg);
 }
 
+// deletes all currently selected objects in descending index order
+static void DeleteSelectedObjects(EditorGuiState &st) {
+    if (st.selectedIndices.empty()) return;
+
+    std::vector<int> sorted = st.selectedIndices;
+    std::sort(sorted.begin(), sorted.end());
+    sorted.erase(std::unique(sorted.begin(), sorted.end()), sorted.end());
+
+    int removed = 0;
+    for (int i = (int)sorted.size() - 1; i >= 0; i--) {
+        int idx = sorted[i];
+        if (idx < 0 || idx >= (int)st.objects.size()) continue;
+        DeleteObjectAtIndex(st, idx);
+        removed++;
+    }
+
+    st.selectedIndices.clear();
+    st.selectedIndex = -1;
+    st.renameIndex = -1;
+    st.renameFromInspector = false;
+    st.colorSyncIndex = -1;
+
+    char msg[96] = { 0 };
+    std::snprintf(msg, sizeof(msg), "Deleted %d selected blocks", removed);
+    AddLog(st, msg);
+}
+
 static float ApproxObjectRadius(const EditorObject &obj) {
     float scaleLen = Vector3Length(obj.scale);
     if (scaleLen < 0.2f) scaleLen = 0.2f;
     return scaleLen * (obj.is2D ? 0.55f : 0.85f);
 }
 
-static int PickObject3D(const EditorGuiState &st, const Rectangle &viewport) {
+int PickObject3D(const EditorGuiState &st, const Rectangle &viewport) {
     if (!CheckCollisionPointRec(GetMousePosition(), viewport)) return -1;
 
     Ray ray = GetMouseRay(GetMousePosition(), st.camera);
@@ -273,6 +224,7 @@ static int PickObject3D(const EditorGuiState &st, const Rectangle &viewport) {
     for (int i = 0; i < (int)st.objects.size(); i++) {
         const EditorObject &obj = st.objects[i];
         if (!obj.visible) continue;
+        if (!IsLayerVisible(st, obj.layerIndex)) continue;
         if (st.isolateSelected && st.selectedIndex >= 0 && i != st.selectedIndex) continue;
 
         RayCollision hit = GetRayCollisionSphere(ray, obj.position, ApproxObjectRadius(obj));
@@ -284,7 +236,7 @@ static int PickObject3D(const EditorGuiState &st, const Rectangle &viewport) {
     return bestIdx;
 }
 
-static void UpdateCameraFromOrbit(EditorGuiState &st) {
+void UpdateCameraFromOrbit(EditorGuiState &st) {
     st.orbitPitch = Clampf(st.orbitPitch, -1.45f, 1.45f);
     st.orbitDistance = Clampf(st.orbitDistance, 3.0f, 220.0f);
 
@@ -309,11 +261,52 @@ static void UpdatePreviewCameraDirection(EditorGuiState &st) {
     st.previewCamera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
 }
 
-static void OpenPreview(EditorGuiState &st) {
+// build transform matrix using translate rotate scale order
+static Matrix BuildObjectMatrix(const EditorObject &obj) {
+    Matrix mat = MatrixIdentity();
+    mat = MatrixMultiply(mat, MatrixTranslate(obj.position.x, obj.position.y, obj.position.z));
+    mat = MatrixMultiply(mat, MatrixRotateX(obj.rotation.x * DEG2RAD));
+    mat = MatrixMultiply(mat, MatrixRotateY(obj.rotation.y * DEG2RAD));
+    mat = MatrixMultiply(mat, MatrixRotateZ(obj.rotation.z * DEG2RAD));
+    mat = MatrixMultiply(mat, MatrixScale(obj.scale.x, obj.scale.y, obj.scale.z));
+    return mat;
+}
+
+// build rotation only matrix for direction vectors
+static Matrix BuildObjectRotationMatrix(const EditorObject &obj) {
+    Matrix mat = MatrixIdentity();
+    mat = MatrixMultiply(mat, MatrixRotateX(obj.rotation.x * DEG2RAD));
+    mat = MatrixMultiply(mat, MatrixRotateY(obj.rotation.y * DEG2RAD));
+    mat = MatrixMultiply(mat, MatrixRotateZ(obj.rotation.z * DEG2RAD));
+    return mat;
+}
+
+// resolve one shotpoint into world position and direction
+bool BuildShotpointWorld(const EditorGuiState &st, const Shotpoint &sp, Vector3 *outPos, Vector3 *outDir) {
+    if (sp.objectIndex < 0 || sp.objectIndex >= (int)st.objects.size()) return false;
+
+    const EditorObject &obj = st.objects[sp.objectIndex];
+    Matrix objMat = BuildObjectMatrix(obj);
+    Matrix rotMat = BuildObjectRotationMatrix(obj);
+
+    if (outPos) *outPos = Vector3Transform(sp.localPos, objMat);
+    if (outDir) {
+        Vector3 localDir = Vector3Transform((Vector3){ 0.0f, 0.0f, -1.0f }, rotMat);
+        if (Vector3LengthSqr(localDir) < 0.0001f) localDir = (Vector3){ 0.0f, 0.0f, -1.0f };
+        *outDir = Vector3Normalize(localDir);
+    }
+
+    return true;
+}
+
+void OpenPreview(EditorGuiState &st) {
     Vector3 look = Vector3Normalize(Vector3Subtract(st.camera.target, st.camera.position));
     if (Vector3LengthSqr(look) < 0.00001f) look = (Vector3){ 0.0f, 0.0f, -1.0f };
 
     st.previewOpen = true;
+    st.previewMode = PreviewMode::Scene;
+    st.previewShotpointIndex = -1;
+    st.previewBlastTimer = 0.0f;
     st.previewCamera = {};
     st.previewCamera.position = st.camera.position;
     st.previewCamera.fovy = 60.0f;
@@ -324,6 +317,18 @@ static void OpenPreview(EditorGuiState &st) {
     AddLog(st, "Preview opened");
 }
 
+// open preview focused on all blasts or one selected shotpoint
+void OpenBlastPreview(EditorGuiState &st, int shotpointIndex) {
+    OpenPreview(st);
+    if (shotpointIndex >= 0) {
+        st.previewMode = PreviewMode::SingleBlast;
+        st.previewShotpointIndex = shotpointIndex;
+    } else {
+        st.previewMode = PreviewMode::AllBlasts;
+        st.previewShotpointIndex = -1;
+    }
+}
+
 static Vector3 AxisVectorFromGizmoAxis(GizmoAxis axis) {
     if (axis == GizmoAxis::X) return (Vector3){ 1.0f, 0.0f, 0.0f };
     if (axis == GizmoAxis::Y) return (Vector3){ 0.0f, 1.0f, 0.0f };
@@ -331,7 +336,7 @@ static Vector3 AxisVectorFromGizmoAxis(GizmoAxis axis) {
     return (Vector3){ 0.0f, 0.0f, 0.0f };
 }
 
-static void DrawObject3D(const EditorObject &obj) {
+void DrawEditorObject3D(const EditorObject &obj) {
     rlPushMatrix();
     rlTranslatef(obj.position.x, obj.position.y, obj.position.z);
     rlRotatef(obj.rotation.x, 1, 0, 0);
@@ -430,7 +435,7 @@ static void DrawGizmoVisual(const EditorObject &obj, GizmoMode mode, GizmoAxis a
     }
 }
 
-static GizmoAxis DetectGizmoAxis(const EditorGuiState &st, const Rectangle &viewport, const EditorObject &obj) {
+GizmoAxis DetectGizmoAxis(const EditorGuiState &st, const Rectangle &viewport, const EditorObject &obj) {
     if (!CheckCollisionPointRec(GetMousePosition(), viewport)) return GizmoAxis::None;
     Vector2 mouse = GetMousePosition();
     Vector3 p = obj.position;
@@ -453,7 +458,7 @@ static GizmoAxis DetectGizmoAxis(const EditorGuiState &st, const Rectangle &view
     return axis;
 }
 
-static void ApplyGizmoDrag(EditorObject &obj, GizmoMode mode, GizmoAxis axis, Vector2 delta, float rotateSensitivity, float scaleSensitivity) {
+void ApplyGizmoDrag(EditorObject &obj, GizmoMode mode, GizmoAxis axis, Vector2 delta, float rotateSensitivity, float scaleSensitivity) {
     float d = (delta.x - delta.y) * 0.02f;
     if (axis == GizmoAxis::X) {
         if (mode == GizmoMode::Rotate) obj.rotation.x += d * rotateSensitivity;
@@ -467,7 +472,7 @@ static void ApplyGizmoDrag(EditorObject &obj, GizmoMode mode, GizmoAxis axis, Ve
     }
 }
 
-static void ApplyMoveAxisDrag(EditorGuiState &st, EditorObject &obj, GizmoAxis axis, Vector2 mouseDelta) {
+void ApplyMoveAxisDrag(EditorGuiState &st, EditorObject &obj, GizmoAxis axis, Vector2 mouseDelta) {
     Vector3 axisVec = AxisVectorFromGizmoAxis(axis);
     if (Vector3LengthSqr(axisVec) < 0.5f) return;
 
@@ -536,7 +541,7 @@ static void DrawPrimitivePreview(Rectangle rect, PrimitiveKind kind, Color tint)
     }
 }
 
-static void DrawTooltip() {
+void DrawTooltip() {
     if (!gHoverTooltip) return;
     Vector2 mouse = GetMousePosition();
     int fs = 17;
@@ -549,13 +554,14 @@ static void DrawTooltip() {
     DrawText(gHoverTooltip, (int)tip.x + 7, (int)tip.y + 6, fs, (Color){ 226, 231, 240, 255 });
 }
 
-static void Draw2DViewportObjects(const Rectangle &viewport, const EditorGuiState &st) {
+void Draw2DViewportObjects(const Rectangle &viewport, const EditorGuiState &st) {
     float scale = 24.0f;
     Vector2 center = { viewport.x + viewport.width * 0.5f, viewport.y + viewport.height * 0.5f };
 
     for (int i = 0; i < (int)st.objects.size(); i++) {
         const EditorObject &obj = st.objects[i];
         if (!obj.visible) continue;
+        if (!IsLayerVisible(st, obj.layerIndex)) continue;
         if (st.isolateSelected && st.selectedIndex >= 0 && i != st.selectedIndex) continue;
 
         Vector2 p = { center.x + obj.position.x * scale, center.y + obj.position.z * scale };
@@ -563,13 +569,22 @@ static void Draw2DViewportObjects(const Rectangle &viewport, const EditorGuiStat
         DrawCircleV(p, sz, obj.color);
         DrawCircleLines((int)p.x, (int)p.y, sz, BLACK);
 
-        if (i == st.selectedIndex) {
+        bool selected = (i == st.selectedIndex);
+        if (!selected) {
+            for (int idx : st.selectedIndices) {
+                if (idx == i) {
+                    selected = true;
+                    break;
+                }
+            }
+        }
+        if (selected) {
             DrawCircleLines((int)p.x, (int)p.y, sz + 5.0f, (Color){ 255, 236, 130, 255 });
         }
     }
 }
 
-static void Draw2DGrid(const Rectangle &viewport) {
+void Draw2DGrid(const Rectangle &viewport) {
     BeginScissorMode((int)viewport.x + 1, (int)viewport.y + 1, (int)viewport.width - 2, (int)viewport.height - 2);
     DrawRectangleRec(viewport, (Color){ 24, 27, 33, 255 });
 
@@ -599,7 +614,7 @@ static void Draw2DGrid(const Rectangle &viewport) {
     DrawText("2D Viewport", (int)viewport.x + 14, (int)viewport.y + 10, 20, (Color){ 214, 220, 232, 255 });
 }
 
-static void Draw3DViewport(const Rectangle &viewport, EditorGuiState &st) {
+void Draw3DViewport(const Rectangle &viewport, EditorGuiState &st) {
     BeginScissorMode((int)viewport.x + 1, (int)viewport.y + 1, (int)viewport.width - 2, (int)viewport.height - 2);
     DrawRectangleRec(viewport, (Color){ 23, 26, 32, 255 });
 
@@ -610,18 +625,44 @@ static void Draw3DViewport(const Rectangle &viewport, EditorGuiState &st) {
         for (int i = 0; i < (int)st.objects.size(); i++) {
             const EditorObject &obj = st.objects[i];
             if (!obj.visible) continue;
+            if (!IsLayerVisible(st, obj.layerIndex)) continue;
             if (st.isolateSelected && st.selectedIndex >= 0 && i != st.selectedIndex) continue;
-            DrawObject3D(obj);
+            DrawEditorObject3D(obj);
+        }
+
+        float blink = 0.35f + 0.65f * fabsf(sinf((float)GetTime() * 5.2f));
+        for (int i = 0; i < (int)st.shotpoints.size(); i++) {
+            const Shotpoint &sp = st.shotpoints[i];
+            if (!sp.enabled) continue;
+            if (sp.objectIndex < 0 || sp.objectIndex >= (int)st.objects.size()) continue;
+            const EditorObject &owner = st.objects[sp.objectIndex];
+            if (!owner.visible || !IsLayerVisible(st, owner.layerIndex)) continue;
+            Vector3 shotPos = { 0 };
+            Vector3 shotDir = { 0, 0, -1 };
+            if (!BuildShotpointWorld(st, sp, &shotPos, &shotDir)) continue;
+            float r = Clampf(sp.blastSize * 0.85f, 0.05f, 0.22f);
+            DrawSphere(shotPos, r, Fade(sp.blastColor, blink));
+            if (i == st.selectedShotpoint && st.leftTab == LeftTab::Lasers) {
+                DrawSphereWires(shotPos, r * 1.8f, 10, 10, Fade(WHITE, blink));
+            }
         }
 
         if (st.selectedIndex >= 0 && st.selectedIndex < (int)st.objects.size()) {
             const EditorObject &obj = st.objects[st.selectedIndex];
-            if (obj.visible) {
+            if (obj.visible && IsLayerVisible(st, obj.layerIndex)) {
                 DrawSelectionHighlight(obj);
                 if (!obj.anchored) {
                     DrawGizmoVisual(obj, st.gizmoMode, st.activeAxis);
                 }
             }
+        }
+
+        for (int idx : st.selectedIndices) {
+            if (idx == st.selectedIndex) continue;
+            if (idx < 0 || idx >= (int)st.objects.size()) continue;
+            const EditorObject &obj = st.objects[idx];
+            if (!obj.visible || !IsLayerVisible(st, obj.layerIndex)) continue;
+            DrawSelectionHighlight(obj);
         }
     EndMode3D();
 
@@ -629,13 +670,70 @@ static void Draw3DViewport(const Rectangle &viewport, EditorGuiState &st) {
 
     DrawRectangleLinesEx(viewport, 2.0f, (Color){ 90, 98, 114, 255 });
     DrawText("3D Viewport", (int)viewport.x + 14, (int)viewport.y + 10, 20, (Color){ 214, 220, 232, 255 });
+
+    if (st.selectMode && st.boxSelecting) {
+        const float minX = fminf(st.boxSelectStart.x, st.boxSelectEnd.x);
+        const float minY = fminf(st.boxSelectStart.y, st.boxSelectEnd.y);
+        const float maxX = fmaxf(st.boxSelectStart.x, st.boxSelectEnd.x);
+        const float maxY = fmaxf(st.boxSelectStart.y, st.boxSelectEnd.y);
+        Rectangle box = { minX, minY, maxX - minX, maxY - minY };
+        if (box.x < viewport.x) {
+            box.width -= (viewport.x - box.x);
+            box.x = viewport.x;
+        }
+        if (box.y < viewport.y) {
+            box.height -= (viewport.y - box.y);
+            box.y = viewport.y;
+        }
+        float right = box.x + box.width;
+        float bottom = box.y + box.height;
+        float vpRight = viewport.x + viewport.width;
+        float vpBottom = viewport.y + viewport.height;
+        if (right > vpRight) box.width = vpRight - box.x;
+        if (bottom > vpBottom) box.height = vpBottom - box.y;
+        if (box.width < 0.0f) box.width = 0.0f;
+        if (box.height < 0.0f) box.height = 0.0f;
+        DrawRectangleRec(box, (Color){ 93, 147, 255, 52 });
+        DrawRectangleLinesEx(box, 1.6f, (Color){ 148, 184, 255, 255 });
+    }
 }
 
-static void DrawPreviewWindow(EditorGuiState &st, float dt) {
+// draw animated blasts from shotpoints in preview mode
+static void DrawPreviewBlasts(EditorGuiState &st) {
+    st.previewBlastTimer += GetFrameTime();
+    const float cadence = 1.25f;
+
+    for (int i = 0; i < (int)st.shotpoints.size(); i++) {
+        const Shotpoint &sp = st.shotpoints[i];
+        if (!sp.enabled) continue;
+        if (sp.objectIndex < 0 || sp.objectIndex >= (int)st.objects.size()) continue;
+        if (!st.objects[sp.objectIndex].visible || !IsLayerVisible(st, st.objects[sp.objectIndex].layerIndex)) continue;
+        if (st.previewMode == PreviewMode::SingleBlast && i != st.previewShotpointIndex) continue;
+
+        Vector3 worldPos = { 0.0f, 0.0f, 0.0f };
+        Vector3 worldDir = { 0.0f, 0.0f, -1.0f };
+        if (!BuildShotpointWorld(st, sp, &worldPos, &worldDir)) continue;
+
+        float phase = fmodf(st.previewBlastTimer + (float)i * 0.22f, cadence);
+        float alphaPulse = 0.4f + 0.6f * fabsf(sinf((float)GetTime() * 4.0f + (float)i));
+        float markerR = 0.08f + 0.03f * alphaPulse;
+        DrawSphere(worldPos, markerR, Fade(sp.blastColor, alphaPulse));
+
+        if (phase <= 0.72f) {
+            float blastLen = 4.0f + (phase / 0.72f) * 34.0f;
+            float radius = Clampf(sp.blastSize, 0.05f, 1.8f);
+            Vector3 end = Vector3Add(worldPos, Vector3Scale(worldDir, blastLen));
+            DrawCylinderEx(worldPos, end, radius, radius * 0.88f, 8, Fade(sp.blastColor, 0.88f));
+            DrawSphere(worldPos, radius * 1.5f, Fade(WHITE, 0.25f));
+        }
+    }
+}
+
+void DrawPreviewWindow(EditorGuiState &st, float dt) {
     int sw = GetScreenWidth();
     int sh = GetScreenHeight();
 
-    //close preview quickly with keyboard
+    // close preview quickly with keyboard
     if (IsKeyPressed(KEY_ESCAPE)) {
         st.previewOpen = false;
         AddLog(st, "Preview closed");
@@ -650,7 +748,7 @@ static void DrawPreviewWindow(EditorGuiState &st, float dt) {
     if (Vector3LengthSqr(right) < 0.00001f) right = (Vector3){ 1.0f, 0.0f, 0.0f };
     Vector3 up = (Vector3){ 0.0f, 1.0f, 0.0f };
 
-    //mouse look + pan controls in preview window
+    // mouse look + pan controls in preview window
     if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) {
         Vector2 d = GetMouseDelta();
         st.previewYaw += d.x * st.previewLookSensitivity;
@@ -663,14 +761,14 @@ static void DrawPreviewWindow(EditorGuiState &st, float dt) {
         st.previewCamera.position = Vector3Add(st.previewCamera.position, Vector3Scale(up, d.y * pan));
     }
 
-    //keyboard rotate controls for preview
+    // keyboard rotate controls for preview
     float keyLook = st.previewLookSensitivity * 200.0f * dt;
     if (IsKeyDown(KEY_LEFT)) st.previewYaw -= keyLook;
     if (IsKeyDown(KEY_RIGHT)) st.previewYaw += keyLook;
     if (IsKeyDown(KEY_UP)) st.previewPitch += keyLook;
     if (IsKeyDown(KEY_DOWN)) st.previewPitch -= keyLook;
 
-    //keyboard move controls for preview
+    // keyboard move controls for preview
     float speedMul = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) ? 2.5f : 1.0f;
     float move = st.previewMoveSpeed * speedMul * dt;
     if (IsKeyDown(KEY_W)) st.previewCamera.position = Vector3Add(st.previewCamera.position, Vector3Scale(flatForward, move));
@@ -678,7 +776,7 @@ static void DrawPreviewWindow(EditorGuiState &st, float dt) {
     if (IsKeyDown(KEY_A)) st.previewCamera.position = Vector3Add(st.previewCamera.position, Vector3Scale(right, -move));
     if (IsKeyDown(KEY_D)) st.previewCamera.position = Vector3Add(st.previewCamera.position, Vector3Scale(right, move));
 
-    //mouse wheel zoom in/out following view direction
+    // mouse wheel zoom in/out following view direction
     float wheel = GetMouseWheelMove();
     if (fabsf(wheel) > 0.0001f) {
         st.previewCamera.position = Vector3Add(st.previewCamera.position, Vector3Scale(lookDir, wheel * st.previewZoomSpeed));
@@ -695,16 +793,24 @@ static void DrawPreviewWindow(EditorGuiState &st, float dt) {
         for (int i = 0; i < (int)st.objects.size(); i++) {
             const EditorObject &obj = st.objects[i];
             if (!obj.visible) continue;
+            if (!IsLayerVisible(st, obj.layerIndex)) continue;
             if (st.isolateSelected && st.selectedIndex >= 0 && i != st.selectedIndex) continue;
-            DrawObject3D(obj);
+            DrawEditorObject3D(obj);
+        }
+
+        if (st.previewMode == PreviewMode::AllBlasts || st.previewMode == PreviewMode::SingleBlast) {
+            DrawPreviewBlasts(st);
         }
     EndMode3D();
 
     DrawRectangle(0, 0, sw, 40, (Color){ 15, 18, 24, 230 });
     DrawLine(0, 40, sw, 40, (Color){ 80, 88, 103, 255 });
 
-    DrawText("Preview Window", 12, 10, 21, RAYWHITE);
-    DrawText("WASD move | Arrow keys rotate | RMB look | MMB pan | Mouse wheel zoom | Shift speed", 196, 12, 16, (Color){ 190, 199, 214, 255 });
+    const char *title = "Preview Window";
+    if (st.previewMode == PreviewMode::AllBlasts) title = "Preview Window - Blasts";
+    if (st.previewMode == PreviewMode::SingleBlast) title = "Preview Window - Shotpoint";
+    DrawText(title, 12, 10, 21, RAYWHITE);
+    DrawText("WASD move | Arrow keys rotate | RMB look | MMB pan | Mouse wheel zoom | Shift speed", 260, 12, 16, (Color){ 190, 199, 214, 255 });
     if (DrawButton((Rectangle){ (float)sw - 112.0f, 6.0f, 98.0f, 28.0f }, "Close", "Close preview and return")) {
         st.previewOpen = false;
         AddLog(st, "Preview closed");
@@ -738,7 +844,7 @@ static bool DrawFloatStepper(const char *label, float *value, float step, float 
     return changed;
 }
 
-static void DrawSettingsPopup(Rectangle rect, EditorGuiState &st) {
+void DrawSettingsPopup(Rectangle rect, EditorGuiState &st) {
     DrawRectangleRounded(rect, 0.05f, 8, (Color){ 32, 36, 44, 248 });
     DrawRectangleRoundedLinesEx(rect, 0.05f, 8, 1.2f, (Color){ 95, 105, 123, 255 });
     DrawText("Settings", (int)rect.x + 12, (int)rect.y + 8, 20, (Color){ 227, 233, 241, 255 });
@@ -768,7 +874,7 @@ static void DrawSettingsPopup(Rectangle rect, EditorGuiState &st) {
     DrawFloatStepper("Pv Pan", &st.previewPanSensitivity, 0.1f, 0.3f, 8.0f, x, y, w, "Preview middle-mouse pan sensitivity");
 }
 
-static void DrawDeleteConfirmPopup(EditorGuiState &st) {
+void DrawDeleteConfirmPopup(EditorGuiState &st) {
     if (!st.showDeleteConfirm) return;
 
     if (IsKeyPressed(KEY_ESCAPE)) {
@@ -787,7 +893,8 @@ static void DrawDeleteConfirmPopup(EditorGuiState &st) {
     DrawText("Confirm Deletion", (int)box.x + 14, (int)box.y + 12, 24, (Color){ 232, 236, 243, 255 });
 
     char msg[192] = { 0 };
-    std::snprintf(msg, sizeof(msg), "Delete block '%s'?", st.deleteTargetName);
+    if (st.deleteTargetIndex == -2) std::snprintf(msg, sizeof(msg), "Delete %s?", st.deleteTargetName);
+    else std::snprintf(msg, sizeof(msg), "Delete block '%s'?", st.deleteTargetName);
     DrawText(msg, (int)box.x + 14, (int)box.y + 56, 20, (Color){ 205, 212, 224, 255 });
     DrawText("This action cannot be undone.", (int)box.x + 14, (int)box.y + 84, 17, (Color){ 167, 175, 190, 255 });
 
@@ -799,13 +906,14 @@ static void DrawDeleteConfirmPopup(EditorGuiState &st) {
         st.showDeleteConfirm = false;
     }
     if (DrawButton(deleteBtn, "Delete", "Confirm delete")) {
-        DeleteObjectAtIndex(st, st.deleteTargetIndex);
+        if (st.deleteTargetIndex == -2) DeleteSelectedObjects(st);
+        else DeleteObjectAtIndex(st, st.deleteTargetIndex);
         st.showDeleteConfirm = false;
     }
     gBlockUiInput = prevBlock;
 }
 
-static void DrawInspectorPanel(Rectangle panelRect, EditorGuiState &st) {
+void DrawInspectorPanel(Rectangle panelRect, EditorGuiState &st) {
     DrawRectangleRec(panelRect, (Color){ 37, 41, 49, 255 });
     DrawRectangleLinesEx(panelRect, 1.0f, (Color){ 82, 88, 100, 255 });
     DrawRectangle((int)panelRect.x, (int)panelRect.y, (int)panelRect.width, 36, (Color){ 44, 49, 58, 255 });
@@ -871,6 +979,50 @@ static void DrawInspectorPanel(Rectangle panelRect, EditorGuiState &st) {
     if (DrawButton(visBtn, obj.visible ? "Visible" : "Hidden", "Toggle object visibility", obj.visible)) obj.visible = !obj.visible;
     if (DrawButton(ancBtn, obj.anchored ? "Anchored" : "Free", "Toggle anchor (locked/unlocked movement)", obj.anchored)) obj.anchored = !obj.anchored;
 
+    y += 34.0f;
+    DrawText("Layer", (int)x, (int)y + 4, 18, (Color){ 198, 206, 219, 255 });
+    Rectangle layerPrev = { x + 60.0f, y, 26.0f, 24.0f };
+    Rectangle layerNext = { x + w - 26.0f, y, 26.0f, 24.0f };
+    Rectangle layerValue = { x + 92.0f, y, w - 124.0f, 24.0f };
+    if (DrawButton(layerPrev, "<", "select previous layer", false, 15) && !st.layers.empty()) {
+        obj.layerIndex--;
+        if (obj.layerIndex < 0) obj.layerIndex = (int)st.layers.size() - 1;
+    }
+    if (DrawButton(layerNext, ">", "select next layer", false, 15) && !st.layers.empty()) {
+        obj.layerIndex++;
+        if (obj.layerIndex >= (int)st.layers.size()) obj.layerIndex = 0;
+    }
+    if (obj.layerIndex < 0 || obj.layerIndex >= (int)st.layers.size()) obj.layerIndex = 0;
+    DrawRectangleRounded(layerValue, 0.14f, 6, (Color){ 35, 40, 49, 255 });
+    DrawRectangleRoundedLinesEx(layerValue, 0.14f, 6, 1.0f, (Color){ 81, 89, 104, 255 });
+    const char *layerName = st.layers.empty() ? "Default" : st.layers[obj.layerIndex].name.c_str();
+    DrawText(layerName, (int)layerValue.x + 6, (int)layerValue.y + 4, 16, RAYWHITE);
+
+    y += 30.0f;
+    DrawText("Parent", (int)x, (int)y + 4, 18, (Color){ 198, 206, 219, 255 });
+    Rectangle parentPrev = { x + 60.0f, y, 26.0f, 24.0f };
+    Rectangle parentNext = { x + w - 26.0f, y, 26.0f, 24.0f };
+    Rectangle parentValue = { x + 92.0f, y, w - 124.0f, 24.0f };
+    if (DrawButton(parentPrev, "<", "select previous parent", false, 15)) {
+        int next = obj.parentIndex - 1;
+        if (next == st.selectedIndex) next--;
+        if (next < -1) next = (int)st.objects.size() - 1;
+        if (next == st.selectedIndex) next = -1;
+        obj.parentIndex = next;
+    }
+    if (DrawButton(parentNext, ">", "select next parent", false, 15)) {
+        int next = obj.parentIndex + 1;
+        if (next == st.selectedIndex) next++;
+        if (next >= (int)st.objects.size()) next = -1;
+        if (next == st.selectedIndex) next = -1;
+        obj.parentIndex = next;
+    }
+    DrawRectangleRounded(parentValue, 0.14f, 6, (Color){ 35, 40, 49, 255 });
+    DrawRectangleRoundedLinesEx(parentValue, 0.14f, 6, 1.0f, (Color){ 81, 89, 104, 255 });
+    const char *parentName = "none";
+    if (obj.parentIndex >= 0 && obj.parentIndex < (int)st.objects.size()) parentName = st.objects[obj.parentIndex].name.c_str();
+    DrawText(parentName, (int)parentValue.x + 6, (int)parentValue.y + 4, 16, RAYWHITE);
+
     y += 36.0f;
     DrawText("Transform", (int)x, (int)y, 20, (Color){ 220, 227, 238, 255 });
     y += 28.0f;
@@ -901,32 +1053,106 @@ static void DrawInspectorPanel(Rectangle panelRect, EditorGuiState &st) {
     DrawRectangleLines((int)x + 62, (int)y + 2, 52, 20, BLACK);
 }
 
-static void DrawSceneTab(Rectangle panelRect, EditorGuiState &st) {
+void DrawSceneTab(Rectangle panelRect, EditorGuiState &st) {
     DrawRectangleRec(panelRect, (Color){ 34, 39, 47, 255 });
     DrawRectangleLinesEx(panelRect, 1.0f, (Color){ 78, 86, 100, 255 });
     DrawRectangle((int)panelRect.x, (int)panelRect.y, (int)panelRect.width, 34, (Color){ 43, 48, 57, 255 });
     DrawText("Scene Manager", (int)panelRect.x + 10, (int)panelRect.y + 8, 20, (Color){ 225, 231, 240, 255 });
 
-    float rowY = panelRect.y + 42.0f;
+    Rectangle layerToggle = { panelRect.x + 8.0f, panelRect.y + 40.0f, 84.0f, 24.0f };
+    Rectangle layerAdd = { panelRect.x + 98.0f, panelRect.y + 40.0f, 56.0f, 24.0f };
+    Rectangle layerAssign = { panelRect.x + 160.0f, panelRect.y + 40.0f, panelRect.width - 168.0f, 24.0f };
+    if (DrawButton(layerToggle, st.showLayerPanel ? "Layers on" : "Layers off", "toggle layer panel", st.showLayerPanel, 14)) {
+        st.showLayerPanel = !st.showLayerPanel;
+    }
+    if (DrawButton(layerAdd, "+L", "add new layer", false, 15)) {
+        EditorLayer layer = {};
+        char name[48] = { 0 };
+        std::snprintf(name, sizeof(name), "Layer_%02d", (int)st.layers.size() + 1);
+        layer.name = name;
+        layer.visible = true;
+        st.layers.push_back(layer);
+        st.activeLayerIndex = (int)st.layers.size() - 1;
+    }
+    if (DrawButton(layerAssign, "set selected to active layer", "move selected block into active layer", false, 14)) {
+        if (st.selectedIndex >= 0 && st.selectedIndex < (int)st.objects.size() &&
+            st.activeLayerIndex >= 0 && st.activeLayerIndex < (int)st.layers.size()) {
+            st.objects[st.selectedIndex].layerIndex = st.activeLayerIndex;
+        }
+    }
+
+    float rowY = panelRect.y + 70.0f;
+    if (st.showLayerPanel) {
+        Rectangle layerList = { panelRect.x + 8.0f, rowY, panelRect.width - 16.0f, 92.0f };
+        DrawRectangleRounded(layerList, 0.07f, 6, (Color){ 29, 33, 40, 255 });
+        DrawRectangleRoundedLinesEx(layerList, 0.07f, 6, 1.0f, (Color){ 84, 92, 108, 255 });
+
+        if (CheckCollisionPointRec(GetMousePosition(), layerList)) {
+            st.layerScroll -= GetMouseWheelMove() * 20.0f;
+            if (st.layerScroll < 0.0f) st.layerScroll = 0.0f;
+        }
+
+        BeginScissorMode((int)layerList.x + 1, (int)layerList.y + 1, (int)layerList.width - 2, (int)layerList.height - 2);
+        float ly = layerList.y + 4.0f - st.layerScroll;
+        for (int i = 0; i < (int)st.layers.size(); i++) {
+            EditorLayer &layer = st.layers[i];
+            Rectangle item = { layerList.x + 4.0f, ly, layerList.width - 8.0f, 22.0f };
+            DrawRectangleRounded(item, 0.10f, 4, i == st.activeLayerIndex ? (Color){ 78, 98, 132, 255 } : (Color){ 45, 50, 60, 255 });
+            DrawRectangleRoundedLinesEx(item, 0.10f, 4, 1.0f, (Color){ 83, 92, 108, 255 });
+
+            Rectangle eye = { item.x + 3.0f, item.y + 1.0f, 20.0f, 20.0f };
+            if (DrawButton(eye, layer.visible ? "o" : "-", layer.visible ? "hide layer" : "show layer", layer.visible, 14)) {
+                layer.visible = !layer.visible;
+            }
+            DrawText(layer.name.c_str(), (int)item.x + 30, (int)item.y + 3, 16, RAYWHITE);
+            if (CheckCollisionPointRec(GetMousePosition(), item) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) st.activeLayerIndex = i;
+            ly += 24.0f;
+        }
+        EndScissorMode();
+        rowY += layerList.height + 8.0f;
+    }
+
+    Rectangle objectList = { panelRect.x + 8.0f, rowY, panelRect.width - 16.0f, panelRect.height - (rowY - panelRect.y) - 8.0f };
+    DrawRectangleRounded(objectList, 0.07f, 6, (Color){ 29, 33, 40, 255 });
+    DrawRectangleRoundedLinesEx(objectList, 0.07f, 6, 1.0f, (Color){ 84, 92, 108, 255 });
+
+    if (CheckCollisionPointRec(GetMousePosition(), objectList)) {
+        st.sceneScroll -= GetMouseWheelMove() * 24.0f;
+        if (st.sceneScroll < 0.0f) st.sceneScroll = 0.0f;
+    }
+
     const float rowH = 30.0f;
     double now = GetTime();
+    BeginScissorMode((int)objectList.x + 1, (int)objectList.y + 1, (int)objectList.width - 2, (int)objectList.height - 2);
+    float drawY = objectList.y + 4.0f - st.sceneScroll;
     for (int i = 0; i < (int)st.objects.size(); i++) {
         EditorObject &obj = st.objects[i];
-        Rectangle row = { panelRect.x + 8.0f, rowY, panelRect.width - 16.0f, rowH - 2.0f };
+        const int depth = ComputeHierarchyDepth(st.objects, i);
+        Rectangle row = { objectList.x + 4.0f, drawY, objectList.width - 8.0f, rowH - 2.0f };
         bool selected = (i == st.selectedIndex);
         Color rowC = selected ? (Color){ 76, 94, 126, 255 } : (Color){ 49, 54, 64, 255 };
         DrawRectangleRounded(row, 0.14f, 5, rowC);
         DrawRectangleRoundedLinesEx(row, 0.14f, 5, 1.0f, (Color){ 90, 98, 114, 255 });
 
         Rectangle eye = { row.x + 4.0f, row.y + 3.0f, 24.0f, 22.0f };
-        if (DrawButton(eye, obj.visible ? "o" : "-", obj.visible ? "Hide object" : "Show object", obj.visible, 15)) {
+        if (DrawButton(eye, obj.visible ? "o" : "-", obj.visible ? "hide object" : "show object", obj.visible, 15)) {
             obj.visible = !obj.visible;
         }
 
-        Rectangle nameRect = { row.x + 34.0f, row.y + 3.0f, row.width - 94.0f, 22.0f };
+        float indent = 34.0f + (float)depth * 12.0f;
+        for (int d = 0; d < depth; d++) {
+            float lx = row.x + 30.0f + (float)d * 12.0f;
+            DrawLineEx((Vector2){ lx, row.y + 3.0f }, (Vector2){ lx, row.y + row.height - 3.0f }, 1.0f, (Color){ 92, 101, 116, 255 });
+        }
+        if (depth > 0) {
+            float hx0 = row.x + 30.0f + (float)(depth - 1) * 12.0f;
+            float hx1 = row.x + indent - 6.0f;
+            DrawLineEx((Vector2){ hx0, row.y + row.height * 0.5f }, (Vector2){ hx1, row.y + row.height * 0.5f }, 1.2f, (Color){ 108, 122, 146, 255 });
+        }
+        Rectangle nameRect = { row.x + indent, row.y + 3.0f, row.width - indent - 64.0f, 22.0f };
         bool nameHover = CheckCollisionPointRec(GetMousePosition(), nameRect);
         bool renamingThis = (st.renameIndex == i && !st.renameFromInspector);
-        SetHoverTooltip(nameHover, renamingThis ? "Type name and press Enter" : "Click to select, double click to open inspector");
+        SetHoverTooltip(nameHover, renamingThis ? "type name and press enter" : "click to select double click to inspect");
         if (renamingThis) {
             DrawRectangleRounded(nameRect, 0.10f, 4, (Color){ 33, 39, 47, 255 });
             DrawRectangleRoundedLinesEx(nameRect, 0.10f, 4, 1.0f, (Color){ 124, 157, 230, 255 });
@@ -936,7 +1162,7 @@ static void DrawSceneTab(Rectangle panelRect, EditorGuiState &st) {
         }
 
         Rectangle renameBtn = { row.x + row.width - 54.0f, row.y + 3.0f, 24.0f, 22.0f };
-        if (DrawButton(renameBtn, "R", "Rename block", false, 14)) {
+        if (DrawButton(renameBtn, "R", "rename block", false, 14)) {
             st.selectedIndex = i;
             st.renameIndex = i;
             st.renameFromInspector = false;
@@ -944,17 +1170,16 @@ static void DrawSceneTab(Rectangle panelRect, EditorGuiState &st) {
         }
 
         Rectangle deleteBtn = { row.x + row.width - 28.0f, row.y + 3.0f, 24.0f, 22.0f };
-        if (DrawButton(deleteBtn, "X", "Delete block", false, 14)) {
+        if (DrawButton(deleteBtn, "X", "delete block", false, 14)) {
             RequestDeleteObject(st, i);
         }
 
         if (!renamingThis && nameHover && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             st.selectedIndex = i;
+            st.selectedIndices.clear();
+            st.selectedIndices.push_back(i);
             st.colorSyncIndex = -1;
-
-            if (st.lastSceneClickIndex == i && (now - st.lastSceneClickTime) < 0.26) {
-                st.showRightPanel = true;
-            }
+            if (st.lastSceneClickIndex == i && (now - st.lastSceneClickTime) < 0.26) st.showRightPanel = true;
             st.lastSceneClickIndex = i;
             st.lastSceneClickTime = now;
         }
@@ -964,14 +1189,7 @@ static void DrawSceneTab(Rectangle panelRect, EditorGuiState &st) {
             bool cancel = false;
             UpdateTextFieldBuffer(st.renameBuffer, sizeof(st.renameBuffer), &submit, &cancel);
             if (submit) {
-                if (std::strlen(st.renameBuffer) > 0) {
-                    char oldName[64] = { 0 };
-                    std::snprintf(oldName, sizeof(oldName), "%s", obj.name.c_str());
-                    obj.name = st.renameBuffer;
-                    char logMsg[196] = { 0 };
-                    std::snprintf(logMsg, sizeof(logMsg), "Renamed block '%s' -> '%s'", oldName, obj.name.c_str());
-                    AddLog(st, logMsg);
-                }
+                if (std::strlen(st.renameBuffer) > 0) obj.name = st.renameBuffer;
                 st.renameIndex = -1;
                 st.renameFromInspector = false;
             }
@@ -981,16 +1199,16 @@ static void DrawSceneTab(Rectangle panelRect, EditorGuiState &st) {
             }
         }
 
-        rowY += rowH;
-        if (rowY > panelRect.y + panelRect.height - 12.0f) break;
+        drawY += rowH;
     }
+    EndScissorMode();
 
     if (st.objects.empty()) {
-        DrawText("No blocks yet.", (int)panelRect.x + 12, (int)panelRect.y + 52, 18, (Color){ 184, 191, 204, 255 });
+        DrawText("No blocks yet.", (int)objectList.x + 10, (int)objectList.y + 10, 18, (Color){ 184, 191, 204, 255 });
     }
 }
 
-static void DrawBlocksTab(Rectangle panelRect, EditorGuiState &st, const Rectangle &viewport) {
+void DrawBlocksTab(Rectangle panelRect, EditorGuiState &st, const Rectangle &viewport) {
     DrawRectangleRec(panelRect, (Color){ 34, 39, 47, 255 });
     DrawRectangleLinesEx(panelRect, 1.0f, (Color){ 78, 86, 100, 255 });
     DrawRectangle((int)panelRect.x, (int)panelRect.y, (int)panelRect.width, 34, (Color){ 43, 48, 57, 255 });
@@ -1003,23 +1221,35 @@ static void DrawBlocksTab(Rectangle panelRect, EditorGuiState &st, const Rectang
     if (DrawButton(d2Btn, "2D", "Show only 2D primitives", st.filterMode == FilterMode::TwoD, 15)) st.filterMode = FilterMode::TwoD;
     if (DrawButton(d3Btn, "3D", "Show only 3D primitives", st.filterMode == FilterMode::ThreeD, 15)) st.filterMode = FilterMode::ThreeD;
 
-    Rectangle listArea = { panelRect.x + 8.0f, panelRect.y + 72.0f, panelRect.width - 16.0f, panelRect.height - 80.0f };
-    bool listHover = CheckCollisionPointRec(GetMousePosition(), listArea);
-    if (listHover) {
+    Rectangle primArea = { panelRect.x + 8.0f, panelRect.y + 72.0f, panelRect.width - 16.0f, panelRect.height * 0.56f };
+    Rectangle pieceHead = { panelRect.x + 8.0f, primArea.y + primArea.height + 4.0f, panelRect.width - 16.0f, 28.0f };
+    Rectangle pieceArea = { panelRect.x + 8.0f, pieceHead.y + pieceHead.height + 2.0f, panelRect.width - 16.0f, panelRect.height - (pieceHead.y + pieceHead.height + 10.0f - panelRect.y) };
+    if (pieceArea.height < 70.0f) pieceArea.height = 70.0f;
+
+    bool primHover = CheckCollisionPointRec(GetMousePosition(), primArea);
+    bool pieceHover = CheckCollisionPointRec(GetMousePosition(), pieceArea);
+    if (primHover) {
         st.panelScroll -= GetMouseWheelMove() * 26.0f;
         if (st.panelScroll < 0.0f) st.panelScroll = 0.0f;
     }
+    if (pieceHover) {
+        st.piecesScroll -= GetMouseWheelMove() * 20.0f;
+        if (st.piecesScroll < 0.0f) st.piecesScroll = 0.0f;
+    }
 
-    BeginScissorMode((int)listArea.x, (int)listArea.y, (int)listArea.width, (int)listArea.height);
-    float cellY = listArea.y + 4.0f - st.panelScroll;
+    DrawRectangleRounded(primArea, 0.06f, 6, (Color){ 29, 33, 40, 255 });
+    DrawRectangleRoundedLinesEx(primArea, 0.06f, 6, 1.0f, (Color){ 78, 86, 101, 255 });
+
+    BeginScissorMode((int)primArea.x + 1, (int)primArea.y + 1, (int)primArea.width - 2, (int)primArea.height - 2);
+    float cellY = primArea.y + 4.0f - st.panelScroll;
     const float cellH = 78.0f;
-    const float cellW = listArea.width;
+    const float cellW = primArea.width;
 
     for (int i = 0; i < kPrimitiveDefCount; i++) {
         const PrimitiveDef &def = kPrimitiveDefs[i];
         if (!PrimitivePassesFilter(def, st.filterMode)) continue;
 
-        Rectangle cell = { listArea.x + 2.0f, cellY, cellW - 4.0f, cellH - 6.0f };
+        Rectangle cell = { primArea.x + 2.0f, cellY, cellW - 4.0f, cellH - 6.0f };
         bool hover = CheckCollisionPointRec(GetMousePosition(), cell);
         SetHoverTooltip(hover, def.tooltip);
 
@@ -1042,6 +1272,53 @@ static void DrawBlocksTab(Rectangle panelRect, EditorGuiState &st, const Rectang
         cellY += cellH;
     }
     EndScissorMode();
+
+    DrawRectangleRounded(pieceHead, 0.07f, 6, (Color){ 39, 45, 54, 255 });
+    DrawRectangleRoundedLinesEx(pieceHead, 0.07f, 6, 1.0f, (Color){ 85, 95, 112, 255 });
+    DrawText("Pieces", (int)pieceHead.x + 8, (int)pieceHead.y + 6, 17, (Color){ 224, 230, 240, 255 });
+    if (DrawButton((Rectangle){ pieceHead.x + pieceHead.width - 88.0f, pieceHead.y + 2.0f, 34.0f, 24.0f }, "+", "create piece from selection", false, 18)) {
+        CreatePieceFromSelection(st);
+        ReloadPieceLibrary(st);
+    }
+    if (DrawButton((Rectangle){ pieceHead.x + pieceHead.width - 50.0f, pieceHead.y + 2.0f, 42.0f, 24.0f }, "R", "reload pieces folder", false, 14)) {
+        ReloadPieceLibrary(st);
+    }
+
+    DrawRectangleRounded(pieceArea, 0.06f, 6, (Color){ 29, 33, 40, 255 });
+    DrawRectangleRoundedLinesEx(pieceArea, 0.06f, 6, 1.0f, (Color){ 78, 86, 101, 255 });
+    BeginScissorMode((int)pieceArea.x + 1, (int)pieceArea.y + 1, (int)pieceArea.width - 2, (int)pieceArea.height - 2);
+    float py = pieceArea.y + 4.0f - st.piecesScroll;
+    for (int i = 0; i < (int)st.pieceLibrary.size(); i++) {
+        const PieceTemplate &piece = st.pieceLibrary[i];
+        Rectangle row = { pieceArea.x + 4.0f, py, pieceArea.width - 8.0f, 24.0f };
+        bool hover = CheckCollisionPointRec(GetMousePosition(), row);
+        DrawRectangleRounded(row, 0.10f, 4, hover ? (Color){ 64, 71, 84, 255 } : (Color){ 45, 50, 60, 255 });
+        DrawRectangleRoundedLinesEx(row, 0.10f, 4, 1.0f, (Color){ 83, 92, 108, 255 });
+        DrawText(piece.name.c_str(), (int)row.x + 6, (int)row.y + 4, 16, RAYWHITE);
+
+        Rectangle openBtn = { row.x + row.width - 72.0f, row.y + 1.0f, 32.0f, 22.0f };
+        Rectangle addBtn = { row.x + row.width - 36.0f, row.y + 1.0f, 32.0f, 22.0f };
+        bool onOpen = CheckCollisionPointRec(GetMousePosition(), openBtn);
+        bool onAdd = CheckCollisionPointRec(GetMousePosition(), addBtn);
+        if (DrawButton(openBtn, "Ed", "open piece workspace tab", false, 13)) {
+            int tab = FindWorkspaceByPath(st, piece.filePath);
+            if (tab < 0) tab = AddWorkspace(st, WorkspaceKind::Piece, piece.name, piece.filePath, piece.snapshot);
+            st.requestSwitchWorkspace = true;
+            st.requestSwitchWorkspaceIndex = tab;
+        }
+        if (DrawButton(addBtn, "+", "insert piece in viewport center", false, 15)) {
+            Vector3 pos = GetSpawnPositionAtTarget(st, PrimitiveKind::Cube);
+            SpawnPieceTemplateAt(st, i, pos, true);
+        } else if (hover && !onOpen && !onAdd && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector3 pos = GetSpawnPositionAtTarget(st, PrimitiveKind::Cube);
+            SpawnPieceTemplateAt(st, i, pos, true);
+        }
+        py += 28.0f;
+    }
+    EndScissorMode();
+    if (st.pieceLibrary.empty()) {
+        DrawText("no piece files found", (int)pieceArea.x + 8, (int)pieceArea.y + 8, 16, (Color){ 184, 191, 204, 255 });
+    }
 
     if (st.palettePressArmed && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
         Vector2 d = Vector2Subtract(GetMousePosition(), st.palettePressMouse);
@@ -1073,7 +1350,80 @@ static void DrawBlocksTab(Rectangle panelRect, EditorGuiState &st, const Rectang
     }
 }
 
-static void DrawColorPanel(Rectangle panelRect, EditorGuiState &st) {
+void DrawMakePieceTab(Rectangle panelRect, EditorGuiState &st, const Rectangle &viewport) {
+    DrawRectangleRec(panelRect, (Color){ 34, 39, 47, 255 });
+    DrawRectangleLinesEx(panelRect, 1.0f, (Color){ 78, 86, 100, 255 });
+    DrawRectangle((int)panelRect.x, (int)panelRect.y, (int)panelRect.width, 34, (Color){ 43, 48, 57, 255 });
+    DrawText("Make Your Own Piece", (int)panelRect.x + 10, (int)panelRect.y + 8, 20, (Color){ 225, 231, 240, 255 });
+
+    Rectangle createBtn = { panelRect.x + 10.0f, panelRect.y + 40.0f, 138.0f, 26.0f };
+    Rectangle reloadBtn = { panelRect.x + 156.0f, panelRect.y + 40.0f, 64.0f, 26.0f };
+    Rectangle saveBtn = { panelRect.x + 226.0f, panelRect.y + 40.0f, 64.0f, 26.0f };
+    if (DrawButton(createBtn, "new from selected", "create piece file from current selection", false, 14)) {
+        CreatePieceFromSelection(st);
+        ReloadPieceLibrary(st);
+    }
+    if (DrawButton(reloadBtn, "reload", "reload .piece files from folder", false, 14)) ReloadPieceLibrary(st);
+    if (DrawButton(saveBtn, "save", "save active piece tab", false, 14)) SaveActivePieceWorkspace(st);
+
+    DrawText(st.piecesRootPath.c_str(), (int)panelRect.x + 10, (int)panelRect.y + 72, 14, (Color){ 170, 180, 196, 255 });
+
+    float dirY = panelRect.y + 92.0f;
+    DrawText("Vehicle Forward", (int)panelRect.x + 10, (int)dirY, 17, (Color){ 214, 222, 236, 255 });
+    if (DrawFloatStepper("Yaw", &st.vehicleForwardYawDeg, 5.0f, -180.0f, 180.0f, panelRect.x + 10.0f, dirY + 22.0f, panelRect.width - 20.0f, "forward direction offset in degrees")) {
+        st.vehicleForwardYawDeg = Clampf(st.vehicleForwardYawDeg, -180.0f, 180.0f);
+    }
+    Rectangle frontBtn = { panelRect.x + 10.0f, dirY + 52.0f, 64.0f, 22.0f };
+    Rectangle rightBtn = { panelRect.x + 78.0f, dirY + 52.0f, 64.0f, 22.0f };
+    Rectangle backBtn = { panelRect.x + 146.0f, dirY + 52.0f, 64.0f, 22.0f };
+    Rectangle leftBtn = { panelRect.x + 214.0f, dirY + 52.0f, 64.0f, 22.0f };
+    if (DrawButton(frontBtn, "Front", "set forward to -Z", fabsf(st.vehicleForwardYawDeg - 0.0f) < 0.1f, 14)) st.vehicleForwardYawDeg = 0.0f;
+    if (DrawButton(rightBtn, "Right", "set forward to +X", fabsf(st.vehicleForwardYawDeg - 90.0f) < 0.1f, 14)) st.vehicleForwardYawDeg = 90.0f;
+    if (DrawButton(backBtn, "Back", "set forward to +Z", fabsf(st.vehicleForwardYawDeg - 180.0f) < 0.1f, 14)) st.vehicleForwardYawDeg = 180.0f;
+    if (DrawButton(leftBtn, "Left", "set forward to -X", fabsf(st.vehicleForwardYawDeg + 90.0f) < 0.1f, 14)) st.vehicleForwardYawDeg = -90.0f;
+
+    Rectangle listArea = { panelRect.x + 8.0f, panelRect.y + 172.0f, panelRect.width - 16.0f, panelRect.height - 180.0f };
+    if (listArea.height < 60.0f) listArea.height = 60.0f;
+    DrawRectangleRounded(listArea, 0.06f, 6, (Color){ 29, 33, 40, 255 });
+    DrawRectangleRoundedLinesEx(listArea, 0.06f, 6, 1.0f, (Color){ 78, 86, 101, 255 });
+
+    if (CheckCollisionPointRec(GetMousePosition(), listArea)) {
+        st.piecesScroll -= GetMouseWheelMove() * 20.0f;
+        if (st.piecesScroll < 0.0f) st.piecesScroll = 0.0f;
+    }
+
+    BeginScissorMode((int)listArea.x + 1, (int)listArea.y + 1, (int)listArea.width - 2, (int)listArea.height - 2);
+    float y = listArea.y + 4.0f - st.piecesScroll;
+    for (int i = 0; i < (int)st.pieceLibrary.size(); i++) {
+        const PieceTemplate &piece = st.pieceLibrary[i];
+        Rectangle row = { listArea.x + 4.0f, y, listArea.width - 8.0f, 26.0f };
+        bool hover = CheckCollisionPointRec(GetMousePosition(), row);
+        DrawRectangleRounded(row, 0.10f, 4, hover ? (Color){ 64, 71, 84, 255 } : (Color){ 45, 50, 60, 255 });
+        DrawRectangleRoundedLinesEx(row, 0.10f, 4, 1.0f, (Color){ 83, 92, 108, 255 });
+        DrawText(piece.name.c_str(), (int)row.x + 8, (int)row.y + 5, 16, RAYWHITE);
+
+        Rectangle openBtn = { row.x + row.width - 100.0f, row.y + 2.0f, 44.0f, 22.0f };
+        Rectangle spawnBtn = { row.x + row.width - 52.0f, row.y + 2.0f, 48.0f, 22.0f };
+        if (DrawButton(openBtn, "open", "open piece workspace tab", false, 13)) {
+            int tab = FindWorkspaceByPath(st, piece.filePath);
+            if (tab < 0) tab = AddWorkspace(st, WorkspaceKind::Piece, piece.name, piece.filePath, piece.snapshot);
+            st.requestSwitchWorkspace = true;
+            st.requestSwitchWorkspaceIndex = tab;
+        }
+        if (DrawButton(spawnBtn, "spawn", "insert piece in current viewport target", false, 13)) {
+            Vector3 pos = CheckCollisionPointRec(GetMousePosition(), viewport) ? GetMouseWorldOnGround(st) : GetSpawnPositionAtTarget(st, PrimitiveKind::Cube);
+            SpawnPieceTemplateAt(st, i, pos, true);
+        }
+        y += 30.0f;
+    }
+    EndScissorMode();
+
+    if (st.pieceLibrary.empty()) {
+        DrawText("no piece templates available", (int)listArea.x + 10, (int)listArea.y + 10, 16, (Color){ 184, 191, 204, 255 });
+    }
+}
+
+void DrawColorPanel(Rectangle panelRect, EditorGuiState &st) {
     DrawRectangleRec(panelRect, (Color){ 34, 39, 47, 255 });
     DrawRectangleLinesEx(panelRect, 1.0f, (Color){ 78, 86, 100, 255 });
     DrawRectangle((int)panelRect.x, (int)panelRect.y, (int)panelRect.width, 34, (Color){ 43, 48, 57, 255 });
@@ -1158,348 +1508,4 @@ static void DrawColorPanel(Rectangle panelRect, EditorGuiState &st) {
 
     DrawRectangle((int)panelRect.x + 22, (int)panelRect.y + 270, (int)panelRect.width - 44, 34, obj.color);
     DrawRectangleLines((int)panelRect.x + 22, (int)panelRect.y + 270, (int)panelRect.width - 44, 34, BLACK);
-}
-
-static void InitState() {
-    if (gState.initialized) return;
-    gState.initialized = true;
-    gState.showRightPanel = true;
-    gState.showSettings = false;
-    gState.statusExpanded = false;
-    gState.isolateSelected = false;
-    gState.viewport2D = false;
-    gState.previewOpen = false;
-    gState.leftTab = LeftTab::Scene;
-    gState.filterMode = FilterMode::All;
-    gState.gizmoMode = GizmoMode::Move;
-    gState.activeAxis = GizmoAxis::None;
-    gState.rightPanelT = 1.0f;
-    gState.statusPanelT = 0.0f;
-    gState.orbitTarget = { 0.0f, 0.0f, 0.0f };
-    gState.orbitYaw = 2.35f;
-    gState.orbitPitch = 0.55f;
-    gState.orbitDistance = 28.0f;
-    gState.cameraOrbitSensitivity = kUserConfig.cameraOrbitSensitivity;
-    gState.cameraPanSensitivity = kUserConfig.cameraPanSensitivity;
-    gState.cameraZoomSensitivity = kUserConfig.cameraZoomSensitivity;
-    gState.gizmoMoveSensitivity = kUserConfig.gizmoMoveSensitivity;
-    gState.gizmoRotateSensitivity = kUserConfig.gizmoRotateSensitivity;
-    gState.gizmoScaleSensitivity = kUserConfig.gizmoScaleSensitivity;
-    gState.previewMoveSpeed = kUserConfig.previewMoveSpeed;
-    gState.previewLookSensitivity = kUserConfig.previewLookSensitivity;
-    gState.previewZoomSpeed = kUserConfig.previewZoomSpeed;
-    gState.previewPanSensitivity = kUserConfig.previewPanSensitivity;
-    gState.leftDragNavigate = false;
-    gState.draggingObjectMove = false;
-    gState.moveDragPlanePoint = { 0.0f, 0.0f, 0.0f };
-    gState.moveDragPlaneNormal = { 0.0f, 0.0f, 1.0f };
-    gState.moveDragOffset = { 0.0f, 0.0f, 0.0f };
-    gState.camera = {};
-    gState.camera.fovy = 45.0f;
-    gState.camera.projection = CAMERA_PERSPECTIVE;
-    gState.previewCamera = {};
-    gState.previewCamera.fovy = 60.0f;
-    gState.previewCamera.projection = CAMERA_PERSPECTIVE;
-    gState.previewYaw = 0.0f;
-    gState.previewPitch = 0.0f;
-    gState.selectedIndex = -1;
-    gState.renameIndex = -1;
-    gState.renameFromInspector = false;
-    gState.showDeleteConfirm = false;
-    gState.deleteTargetIndex = -1;
-    gState.deleteTargetName[0] = '\0';
-    gState.renameBuffer[0] = '\0';
-    gState.lastSceneClickTime = -10.0;
-    gState.lastSceneClickIndex = -1;
-    gState.palettePressArmed = false;
-    gState.draggingPalette = false;
-    gState.panelScroll = 0.0f;
-    gState.colorHue = 0.0f;
-    gState.colorSat = 1.0f;
-    gState.colorVal = 1.0f;
-    gState.colorSyncIndex = -1;
-    UpdateCameraFromOrbit(gState);
-    AddLog(gState, "Engine editor ready");
-}
-
-void DrawEngineGuiLayout(float dt) {
-    InitState();
-    gHoverTooltip = nullptr;
-    gBlockUiInput = false;
-
-    if (gState.previewOpen) {
-        DrawPreviewWindow(gState, dt);
-        DrawTooltip();
-        return;
-    }
-
-    float t = Clampf(dt * kUserConfig.uiAnimationSpeed, 0.0f, 1.0f);
-    gState.rightPanelT = LerpF(gState.rightPanelT, gState.showRightPanel ? 1.0f : 0.0f, t);
-    gState.statusPanelT = LerpF(gState.statusPanelT, gState.statusExpanded ? 1.0f : 0.0f, t);
-
-    bool textEditing = (gState.renameIndex >= 0);
-    bool modalOpen = gState.showDeleteConfirm;
-    gBlockUiInput = textEditing || modalOpen;
-    if (!textEditing && !modalOpen) {
-        if (IsKeyPressed(KEY_W)) gState.gizmoMode = GizmoMode::Move;
-        if (IsKeyPressed(KEY_E)) gState.gizmoMode = GizmoMode::Rotate;
-        if (IsKeyPressed(KEY_R)) gState.gizmoMode = GizmoMode::Scale;
-        if ((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
-            gState.selectedIndex >= 0 && gState.selectedIndex < (int)gState.objects.size()) {
-            RequestDeleteObject(gState, gState.selectedIndex);
-        }
-    }
-
-    int sw = GetScreenWidth();
-    int sh = GetScreenHeight();
-
-    const float topH = 42.0f;
-    const float subTopH = 34.0f;
-    const float iconBarW = 68.0f;
-    const float leftPanelW = 300.0f;
-    const float rightW = 356.0f * gState.rightPanelT;
-    const float statusMinH = 28.0f;
-    const float statusMaxH = 182.0f;
-    const float statusH = statusMinH + (statusMaxH - statusMinH) * gState.statusPanelT;
-    const float bodyTop = topH + subTopH;
-    const float statusY = (float)sh - statusH;
-
-    Rectangle leftIcons = { 0, bodyTop, iconBarW, statusY - bodyTop };
-    Rectangle leftPanel = { iconBarW, bodyTop, leftPanelW, statusY - bodyTop };
-    Rectangle viewport = {
-        iconBarW + leftPanelW + 1.0f,
-        bodyTop + 1.0f,
-        (float)sw - iconBarW - leftPanelW - rightW - 2.0f,
-        statusY - bodyTop - 2.0f
-    };
-    if (viewport.width < 180.0f) viewport.width = 180.0f;
-    if (viewport.height < 160.0f) viewport.height = 160.0f;
-
-    Rectangle rightPanel = { (float)sw - rightW, bodyTop, rightW, statusY - bodyTop };
-    Rectangle statusBar = { 0, statusY, (float)sw, statusH };
-
-    bool mouseInViewport = CheckCollisionPointRec(GetMousePosition(), viewport);
-    bool viewportInputEnabled = !gState.viewport2D && mouseInViewport && !gState.draggingPalette && !gState.palettePressArmed && !textEditing && !modalOpen;
-
-    //camera controls no viewport (3d)
-    if (viewportInputEnabled) {
-        float wheel = GetMouseWheelMove();
-        if (fabsf(wheel) > 0.0001f) gState.orbitDistance *= (1.0f - wheel * gState.cameraZoomSensitivity);
-
-        Vector2 d = GetMouseDelta();
-        bool altOrbit = (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsMouseButtonDown(MOUSE_LEFT_BUTTON);
-        bool rightOrbit = IsMouseButtonDown(MOUSE_RIGHT_BUTTON) && !(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
-        bool panInput = IsMouseButtonDown(MOUSE_MIDDLE_BUTTON) ||
-                        (IsMouseButtonDown(MOUSE_RIGHT_BUTTON) && (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))) ||
-                        (gState.leftDragNavigate && IsMouseButtonDown(MOUSE_LEFT_BUTTON));
-
-        if (altOrbit || rightOrbit) {
-            gState.orbitYaw -= d.x * gState.cameraOrbitSensitivity;
-            gState.orbitPitch += d.y * gState.cameraOrbitSensitivity;
-        }
-
-        if (panInput) {
-            Vector3 forward = Vector3Normalize(Vector3Subtract(gState.camera.target, gState.camera.position));
-            Vector3 right = Vector3Normalize(Vector3CrossProduct(forward, gState.camera.up));
-            Vector3 up = Vector3Normalize(Vector3CrossProduct(right, forward));
-            float panScale = gState.cameraPanSensitivity * gState.orbitDistance;
-            gState.orbitTarget = Vector3Add(gState.orbitTarget, Vector3Scale(right, -d.x * panScale));
-            gState.orbitTarget = Vector3Add(gState.orbitTarget, Vector3Scale(up, d.y * panScale));
-        }
-    }
-    UpdateCameraFromOrbit(gState);
-
-    //gizmo + selection in viewport
-    if (!gState.viewport2D && viewportInputEnabled) {
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) &&
-            !(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))) {
-            gState.leftDragNavigate = false;
-            gState.activeAxis = GizmoAxis::None;
-            gState.draggingObjectMove = false;
-            bool handledByGizmo = false;
-
-            if (gState.selectedIndex >= 0 && gState.selectedIndex < (int)gState.objects.size()) {
-                EditorObject &selectedObj = gState.objects[gState.selectedIndex];
-                if (!selectedObj.anchored) {
-                    GizmoAxis hoverAxis = DetectGizmoAxis(gState, viewport, selectedObj);
-                    if (hoverAxis != GizmoAxis::None) {
-                        gState.activeAxis = hoverAxis;
-                        handledByGizmo = true;
-                    }
-                }
-            }
-
-            if (!handledByGizmo) {
-                int picked = PickObject3D(gState, viewport);
-                gState.selectedIndex = picked;
-                gState.colorSyncIndex = -1;
-
-                if (picked >= 0 && picked < (int)gState.objects.size()) {
-                    EditorObject &obj = gState.objects[picked];
-                    if (!obj.anchored) {
-                        if (gState.gizmoMode == GizmoMode::Move) {
-                            Ray ray = GetMouseRay(GetMousePosition(), gState.camera);
-                            Vector3 forward = Vector3Normalize(Vector3Subtract(gState.camera.target, gState.camera.position));
-                            if (Vector3LengthSqr(forward) < 0.0001f) forward = (Vector3){ 0.0f, 0.0f, 1.0f };
-                            gState.moveDragPlaneNormal = forward;
-                            gState.moveDragPlanePoint = obj.position;
-
-                            Vector3 hit = obj.position;
-                            if (RayPlaneIntersection(ray, gState.moveDragPlanePoint, gState.moveDragPlaneNormal, &hit)) {
-                                gState.moveDragOffset = Vector3Subtract(obj.position, hit);
-                            } else {
-                                gState.moveDragOffset = (Vector3){ 0.0f, 0.0f, 0.0f };
-                            }
-                            gState.draggingObjectMove = true;
-                        } else {
-                            GizmoAxis hoverAxis = DetectGizmoAxis(gState, viewport, obj);
-                            if (hoverAxis != GizmoAxis::None) gState.activeAxis = hoverAxis;
-                        }
-                    }
-                } else {
-                    gState.leftDragNavigate = true;
-                }
-            }
-        }
-
-        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && gState.selectedIndex >= 0 && gState.selectedIndex < (int)gState.objects.size()) {
-            EditorObject &obj = gState.objects[gState.selectedIndex];
-            if (!obj.anchored && gState.gizmoMode == GizmoMode::Move) {
-                if (gState.activeAxis != GizmoAxis::None) {
-                    ApplyMoveAxisDrag(gState, obj, gState.activeAxis, GetMouseDelta());
-                } else if (gState.draggingObjectMove) {
-                    Ray ray = GetMouseRay(GetMousePosition(), gState.camera);
-                    Vector3 hit = obj.position;
-                    if (RayPlaneIntersection(ray, gState.moveDragPlanePoint, gState.moveDragPlaneNormal, &hit)) {
-                        obj.position = Vector3Add(hit, gState.moveDragOffset);
-                    }
-                }
-            } else if (!obj.anchored && gState.activeAxis != GizmoAxis::None &&
-                       (gState.gizmoMode == GizmoMode::Rotate || gState.gizmoMode == GizmoMode::Scale)) {
-                ApplyGizmoDrag(obj, gState.gizmoMode, gState.activeAxis, GetMouseDelta(),
-                               gState.gizmoRotateSensitivity, gState.gizmoScaleSensitivity);
-            }
-        }
-
-        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-            gState.leftDragNavigate = false;
-            gState.draggingObjectMove = false;
-            gState.activeAxis = GizmoAxis::None;
-        }
-    } else if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-        gState.leftDragNavigate = false;
-        gState.draggingObjectMove = false;
-        gState.activeAxis = GizmoAxis::None;
-    }
-
-    DrawRectangle(0, 0, sw, sh, (Color){ 19, 22, 28, 255 });
-
-    //top bar
-    DrawRectangle(0, 0, sw, (int)topH, (Color){ 36, 40, 48, 255 });
-    DrawLineEx((Vector2){ 0, topH }, (Vector2){ (float)sw, topH }, 1.0f, (Color){ 82, 88, 100, 255 });
-    DrawButton((Rectangle){ 14, 7, 82, 28 }, "New", "Create new scene");
-    DrawButton((Rectangle){ 104, 7, 88, 28 }, "Open", "Open scene");
-    DrawButton((Rectangle){ 200, 7, 86, 28 }, "Save", "Save scene");
-    DrawButton((Rectangle){ 294, 7, 98, 28 }, "Export", "Export build");
-    if (DrawButton((Rectangle){ 400, 7, 112, 28 }, "Settings", "Open editor settings", gState.showSettings)) {
-        gState.showSettings = !gState.showSettings;
-    }
-    DrawText("Le Bombo Game Engine", 530, 10, 20, (Color){ 230, 233, 240, 255 });
-
-    //sub bar
-    DrawRectangle(0, (int)topH, sw, (int)subTopH, (Color){ 31, 35, 42, 255 });
-    DrawLineEx((Vector2){ 0, bodyTop }, (Vector2){ (float)sw, bodyTop }, 1.0f, (Color){ 78, 84, 96, 255 });
-
-    Rectangle btn2D = { (float)sw - 470.0f, topH + 3.0f, 50.0f, 27.0f };
-    Rectangle btn3D = { (float)sw - 414.0f, topH + 3.0f, 50.0f, 27.0f };
-    Rectangle btnMove = { (float)sw - 355.0f, topH + 3.0f, 58.0f, 27.0f };
-    Rectangle btnRotate = { (float)sw - 292.0f, topH + 3.0f, 58.0f, 27.0f };
-    Rectangle btnScale = { (float)sw - 229.0f, topH + 3.0f, 58.0f, 27.0f };
-    Rectangle btnPreview = { (float)sw - 165.0f, topH + 3.0f, 98.0f, 27.0f };
-    Rectangle btnEye = { (float)sw - 61.0f, topH + 3.0f, 22.0f, 27.0f };
-    Rectangle btnRight = { (float)sw - 33.0f, topH + 3.0f, 26.0f, 27.0f };
-
-    if (DrawButton(btn2D, "2D", "Switch viewport to 2D mode", gState.viewport2D)) gState.viewport2D = true;
-    if (DrawButton(btn3D, "3D", "Switch viewport to 3D mode", !gState.viewport2D)) gState.viewport2D = false;
-    if (DrawButton(btnMove, "Move", "Move gizmo mode (W)", gState.gizmoMode == GizmoMode::Move)) gState.gizmoMode = GizmoMode::Move;
-    if (DrawButton(btnRotate, "Rotate", "Rotate gizmo mode (E)", gState.gizmoMode == GizmoMode::Rotate)) gState.gizmoMode = GizmoMode::Rotate;
-    if (DrawButton(btnScale, "Scale", "Scale gizmo mode (R)", gState.gizmoMode == GizmoMode::Scale)) gState.gizmoMode = GizmoMode::Scale;
-    if (DrawButton(btnPreview, "> Preview", "Open live preview window")) {
-        OpenPreview(gState);
-    }
-    if (DrawButton(btnEye, "o", "Show only selected block", gState.isolateSelected, 16)) gState.isolateSelected = !gState.isolateSelected;
-    if (DrawButton(btnRight, gState.showRightPanel ? "<" : ">", "Toggle inspector panel", false, 16)) gState.showRightPanel = !gState.showRightPanel;
-
-    //left icon bar
-    DrawRectangleRec(leftIcons, (Color){ 33, 37, 44, 255 });
-    DrawRectangleLinesEx(leftIcons, 1.0f, (Color){ 78, 85, 97, 255 });
-    if (DrawButton((Rectangle){ 14, bodyTop + 16, 40, 40 }, "SCN", "Scene manager", gState.leftTab == LeftTab::Scene, 14)) gState.leftTab = LeftTab::Scene;
-    if (DrawButton((Rectangle){ 14, bodyTop + 66, 40, 40 }, "BLK", "Blocks palette", gState.leftTab == LeftTab::Blocks, 14)) gState.leftTab = LeftTab::Blocks;
-    if (DrawButton((Rectangle){ 14, bodyTop + 116, 40, 40 }, "CLR", "Color tools", gState.leftTab == LeftTab::Colors, 14)) gState.leftTab = LeftTab::Colors;
-
-    //left content panel
-    if (gState.leftTab == LeftTab::Scene) {
-        DrawSceneTab(leftPanel, gState);
-    } else if (gState.leftTab == LeftTab::Blocks) {
-        DrawBlocksTab(leftPanel, gState, viewport);
-    } else {
-        DrawColorPanel(leftPanel, gState);
-    }
-
-    //viewport
-    if (gState.viewport2D) {
-        Draw2DGrid(viewport);
-        Draw2DViewportObjects(viewport, gState);
-    } else {
-        Draw3DViewport(viewport, gState);
-    }
-
-    //right panel
-    if (rightW > 1.0f) {
-        DrawInspectorPanel(rightPanel, gState);
-    }
-
-    //status bar
-    DrawRectangleRec(statusBar, (Color){ 29, 33, 39, 255 });
-    DrawRectangleLinesEx(statusBar, 1.0f, (Color){ 78, 84, 96, 255 });
-    DrawRectangle(0, (int)statusY, sw, 28, (Color){ 38, 42, 50, 255 });
-    if (DrawButton((Rectangle){ 8, statusY + 2.0f, 30, 24 }, gState.statusExpanded ? "v" : "^", "Expand/collapse status panel", false, 16)) {
-        gState.statusExpanded = !gState.statusExpanded;
-    }
-    DrawText("Status: Console", 46, (int)statusY + 6, 18, (Color){ 208, 214, 226, 255 });
-    if (statusH > 40.0f) {
-        DrawText("Event Log (date/time):", 18, (int)statusY + 36, 17, (Color){ 195, 203, 217, 255 });
-        int maxLines = (int)((statusH - 54.0f) / 18.0f);
-        if (maxLines < 1) maxLines = 1;
-
-        int total = (int)gState.logs.size();
-        int start = total - maxLines;
-        if (start < 0) start = 0;
-
-        int lineY = (int)statusY + 56;
-        if (total <= 0) {
-            DrawText("[empty] no actions yet", 18, lineY, 16, (Color){ 168, 177, 192, 255 });
-        } else {
-            for (int i = start; i < total; i++) {
-                const EngineLogEntry &entry = gState.logs[i];
-                char line[256] = { 0 };
-                std::snprintf(line, sizeof(line), "[%s] %s", entry.timestamp, entry.text.c_str());
-                DrawText(line, 18, lineY, 16, (Color){ 176, 184, 198, 255 });
-                lineY += 18;
-            }
-        }
-    } else if (!gState.logs.empty()) {
-        const EngineLogEntry &entry = gState.logs.back();
-        char line[256] = { 0 };
-        std::snprintf(line, sizeof(line), "[%s] %s", entry.timestamp, entry.text.c_str());
-        DrawText(line, 212, (int)statusY + 7, 15, (Color){ 176, 184, 198, 255 });
-    }
-
-    if (gState.showSettings) {
-        DrawSettingsPopup((Rectangle){ 14.0f, bodyTop + 10.0f, 340.0f, 352.0f }, gState);
-    }
-
-    DrawDeleteConfirmPopup(gState);
-
-    DrawTooltip();
 }

@@ -1,4 +1,5 @@
 #include "obj.h"
+#include "custom_vehicle.h"
 
 //nome dos veiculos
 const char* GetVehicleName(VehicleType vehicle) {
@@ -9,6 +10,7 @@ const char* GetVehicleName(VehicleType vehicle) {
         case VEHICLE_UFO:        return "UFO";
         case VEHICLE_DRONE:      return "Drone";
         case VEHICLE_HAWK:       return "Hawk";
+        case VEHICLE_CUSTOM:     return CustomVehicleName();
         default:                 return "Airplane";
     }
 }
@@ -491,6 +493,7 @@ void DrawVehicleModel(VehicleType vehicle, float spinnerAngle) {
         case VEHICLE_UFO:        DrawUfoModel(spinnerAngle); break;
         case VEHICLE_DRONE:      DrawDroneModel(spinnerAngle); break;
         case VEHICLE_HAWK:       DrawHawkModel(spinnerAngle); break;
+        case VEHICLE_CUSTOM:     DrawCustomVehicleModel(spinnerAngle); break;
         default:                 DrawAirplaneModel(spinnerAngle); break;
     }
 }

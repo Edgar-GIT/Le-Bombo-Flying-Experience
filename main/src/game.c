@@ -3,6 +3,7 @@
 #include "ui.h"
 #include "atacks.h"
 #include "screens.h"
+#include "custom_vehicle.h"
 
 #if defined(LBFE_USE_ZIG_RUNTIME)
 void LBFE_ZigBeginFrame(float dt_seconds, float overlay_alpha);
@@ -336,6 +337,16 @@ void GameRun(void) {
 
     Color* crazyColors = gCrazyColors;
     int numCrazyColors = gNumCrazyColors;
+
+    //carrega veiculo custom exportado pela game engine quando existir
+    bool customLoaded = CustomVehicleLoadFromBuilds("main/GameEngine/builds");
+    if (!customLoaded) customLoaded = CustomVehicleLoadFromBuilds("GameEngine/builds");
+    if (!customLoaded) customLoaded = CustomVehicleLoadFromBuilds("../main/GameEngine/builds");
+    if (customLoaded) {
+        TraceLog(LOG_INFO, "custom vehicle loaded: %s", CustomVehicleName());
+    } else {
+        TraceLog(LOG_INFO, "no custom vehicle found in builds folder");
+    }
 
     Building buildings[MAX_BUILDINGS] = { 0 };
     for (int i = 0; i < MAX_BUILDINGS; i++)
@@ -796,7 +807,9 @@ void GameRun(void) {
             smokeTimer += dt;
             if (smokeTimer >= SMOKE_SPAWN_INTERVAL &&
                 activeVehicle != VEHICLE_UFO &&
-                activeVehicle != VEHICLE_DRONE && activeVehicle != VEHICLE_HAWK) {
+                activeVehicle != VEHICLE_DRONE &&
+                activeVehicle != VEHICLE_HAWK &&
+                activeVehicle != VEHICLE_CUSTOM) {
                 smokeTimer = 0.0f;
                 for (int i = 0; i < MAX_SMOKE; i++) {
                     if (!smokeArr[i].active) {
@@ -1137,6 +1150,31 @@ void GameRun(void) {
                                                   particles,
                                                   crazyColors, numCrazyColors,
                                                   fxExplode, fxGoldenHit);
+                } else if (activeVehicle == VEHICLE_CUSTOM) {
+                    int shotCount = CustomVehicleShotpointCount();
+                    for (int sp = 0; sp < shotCount; sp++) {
+                        Vector3 shotPos = { 0 };
+                        Vector3 shotDir = forward;
+                        Color shotColor = WHITE;
+                        float shotRadius = LASER_RADIUS;
+                        if (!CustomVehicleGetShotpointWorld(sp,
+                                                            airplanePos, rotation,
+                                                            &shotPos, &shotDir,
+                                                            &shotColor, &shotRadius)) {
+                            continue;
+                        }
+                        (void)shotColor;
+                        (void)shotRadius;
+                        AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
+                                                      shotPos, shotDir,
+                                                      &buildings[i],
+                                                      &score,
+                                                      &comboHitStreak, &comboLevel, &comboTimer,
+                                                      &laserAlpha, &goldenHitAlpha,
+                                                      particles,
+                                                      crazyColors, numCrazyColors,
+                                                      fxExplode, fxGoldenHit);
+                    }
                 } else {
                     AttackTryLaserBlastOnBuilding(shooting, activeVehicle,
                                                   airplanePos, forward,
@@ -1420,6 +1458,27 @@ void GameRun(void) {
                         DrawVehicleLaserBeam(lFROuter, Vector3Add(lFROuter, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
                         DrawVehicleLaserBeam(lFLInner, Vector3Add(lFLInner, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
                         DrawVehicleLaserBeam(lFLOuter, Vector3Add(lFLOuter, Vector3Scale(forward, LASER_LENGTH)), activeVehicle);
+                    } else if (activeVehicle == VEHICLE_CUSTOM) {
+                        int shotCount = CustomVehicleShotpointCount();
+                        for (int sp = 0; sp < shotCount; sp++) {
+                            Vector3 shotPos = { 0 };
+                            Vector3 shotDir = forward;
+                            Color shotColor = WHITE;
+                            float shotRadius = LASER_RADIUS;
+                            if (!CustomVehicleGetShotpointWorld(sp,
+                                                                airplanePos, rotation,
+                                                                &shotPos, &shotDir,
+                                                                &shotColor, &shotRadius)) {
+                                continue;
+                            }
+                            float radius = shotRadius;
+                            if (radius < 0.05f) radius = 0.05f;
+                            if (radius > 1.8f) radius = 1.8f;
+                            DrawCylinderEx(shotPos,
+                                           Vector3Add(shotPos, Vector3Scale(shotDir, LASER_LENGTH)),
+                                           radius, radius * 0.84f,
+                                           8, shotColor);
+                        }
                     } else {
                         // Aviões/Helicóptero/Jet disparam para a frente
                         Vector3 gunRLocal = (Vector3){ 2.5f, -0.05f, 0.0f };

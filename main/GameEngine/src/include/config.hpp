@@ -9,7 +9,9 @@
 enum class LeftTab {
     Scene = 0,
     Blocks,
-    Colors
+    Colors,
+    MakePiece,
+    Lasers
 };
 
 enum class FilterMode {
@@ -45,6 +47,23 @@ enum class PrimitiveKind {
     Line2D
 };
 
+enum class PreviewMode {
+    Scene = 0,
+    AllBlasts,
+    SingleBlast
+};
+
+enum class ProjectDialogMode {
+    None = 0,
+    NewProject,
+    OpenProject
+};
+
+enum class WorkspaceKind {
+    Project = 0,
+    Piece
+};
+
 struct PrimitiveDef {
     PrimitiveKind kind;
     const char *label;
@@ -73,6 +92,8 @@ struct EngineUserConfig {
 
     int maxLogEntries;
     int trimLogEntries;
+    int maxUndoEntries;
+    int maxCacheEntries;
 };
 
 extern const EngineUserConfig kUserConfig;
@@ -83,10 +104,47 @@ struct EditorObject {
     bool is2D;
     bool visible;
     bool anchored;
+    int layerIndex;
+    int parentIndex;
     Vector3 position;
     Vector3 rotation;
     Vector3 scale;
     Color color;
+};
+
+struct Shotpoint {
+    std::string name;
+    int objectIndex;
+    bool enabled;
+    Vector3 localPos;
+    Color blastColor;
+    float blastSize;
+};
+
+struct EditorSnapshot {
+    std::vector<EditorObject> objects;
+    std::vector<Shotpoint> shotpoints;
+    std::vector<std::string> layerNames;
+    std::vector<bool> layerVisible;
+};
+
+struct EditorLayer {
+    std::string name;
+    bool visible;
+};
+
+struct PieceTemplate {
+    std::string name;
+    std::string filePath;
+    EditorSnapshot snapshot;
+};
+
+struct WorkspaceTab {
+    WorkspaceKind kind;
+    std::string name;
+    std::string filePath;
+    EditorSnapshot snapshot;
+    bool dirty;
 };
 
 struct EngineLogEntry {
@@ -94,20 +152,37 @@ struct EngineLogEntry {
     std::string text;
 };
 
+struct CacheActionEntry {
+    char timestamp[32];
+    std::string action;
+    std::string detail;
+};
+
 struct EditorGuiState {
     bool initialized;
+    bool showLeftPanel;
     bool showRightPanel;
     bool showSettings;
     bool statusExpanded;
     bool isolateSelected;
+    bool selectMode;
+    bool boxSelecting;
     bool viewport2D;
     bool previewOpen;
+    bool shotpointPlacementOpen;
     LeftTab leftTab;
     FilterMode filterMode;
     GizmoMode gizmoMode;
     GizmoAxis activeAxis;
+    PreviewMode previewMode;
+    float leftPanelT;
     float rightPanelT;
     float statusPanelT;
+    Vector2 boxSelectStart;
+    Vector2 boxSelectEnd;
+    std::vector<int> selectedIndices;
+    bool selectionDragActive;
+    Vector2 selectionDragStart;
 
     Camera3D camera;
     Vector3 orbitTarget;
@@ -132,9 +207,17 @@ struct EditorGuiState {
     Camera3D previewCamera;
     float previewYaw;
     float previewPitch;
+    int previewShotpointIndex;
+    float previewBlastTimer;
+
+    Camera3D shotpointPlacementCamera;
+    float shotpointPlacementYaw;
+    float shotpointPlacementPitch;
+    int shotpointPlacementIndex;
 
     float panelScroll;
     int selectedIndex;
+    int activeLayerIndex;
     int renameIndex;
     bool renameFromInspector;
     bool showDeleteConfirm;
@@ -149,14 +232,76 @@ struct EditorGuiState {
     Vector2 palettePressMouse;
     bool draggingPalette;
     PrimitiveKind draggingKind;
+    bool showLayerPanel;
+    bool showNewMenu;
+    bool showTabContextMenu;
+    int tabContextIndex;
+    Vector2 tabContextPos;
+    int tabRenameIndex;
+    char tabRenameBuffer[96];
 
     float colorHue;
     float colorSat;
     float colorVal;
     int colorSyncIndex;
 
+    float vehicleForwardYawDeg;
+
+    GizmoAxis shotpointPlacementAxis;
+    bool shotpointPlacementDrag;
+
+    float piecesScroll;
+    float sceneScroll;
+    float layerScroll;
+
+    bool historyPending;
+    bool historyApplying;
+    double historyLastChangeTime;
+    std::string historyBaselineHash;
+    EditorSnapshot historyBaselineSnapshot;
+    EditorSnapshot historyPendingBeforeSnapshot;
+    std::vector<EditorSnapshot> undoStack;
+    std::vector<EditorSnapshot> redoStack;
+
+    std::string cacheFilePath;
+    bool cacheInitialized;
+    std::vector<CacheActionEntry> cacheActions;
+
+    bool showProjectDialog;
+    ProjectDialogMode projectDialogMode;
+    bool showUnsavedConfirm;
+    ProjectDialogMode pendingDialogMode;
+    bool showRecoveryDialog;
+    std::string recoveryProjectPath;
+    char projectNameBuffer[128];
+    char projectErrorBuffer[192];
+    float projectListScroll;
+    std::vector<std::string> projectFolderList;
+
+    std::string projectsRootPath;
+    std::string currentProjectPath;
+    std::string currentProjectName;
+    std::string piecesRootPath;
+    bool projectLoaded;
+    bool projectDirty;
+    double autosaveIntervalSec;
+    double autosaveLastTime;
+
     std::vector<EngineLogEntry> logs;
     std::vector<EditorObject> objects;
+    std::vector<Shotpoint> shotpoints;
+    std::vector<EditorLayer> layers;
+    std::vector<PieceTemplate> pieceLibrary;
+    std::vector<EditorObject> clipboardObjects;
+    std::vector<Shotpoint> clipboardShotpoints;
+    int clipboardPasteCount;
+    std::vector<WorkspaceTab> workspaces;
+    int activeWorkspaceIndex;
+    std::vector<Rectangle> workspaceTabRects;
+    int hoveredWorkspaceTab;
+    bool requestSwitchWorkspace;
+    int requestSwitchWorkspaceIndex;
+    int selectedShotpoint;
 };
 
 #endif

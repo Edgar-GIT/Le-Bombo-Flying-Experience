@@ -220,6 +220,7 @@ typedef enum {
     VEHICLE_UFO,
     VEHICLE_DRONE,
     VEHICLE_HAWK,
+    VEHICLE_CUSTOM,
     VEHICLE_COUNT
 } VehicleType;
 

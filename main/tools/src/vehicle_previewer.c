@@ -2,6 +2,7 @@
 #include "raymath.h"
 #include "rlgl.h"
 #include "obj.h"
+#include "custom_vehicle.h"
 
 static bool DrawArrowSide(Rectangle rect, bool left) {
     bool hover = CheckCollisionPointRec(GetMousePosition(), rect);
@@ -29,6 +30,11 @@ int main(void) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     InitWindow(1100, 700, "Vehicle Previewer");
     SetTargetFPS(60);
+
+    //loads exported custom vehicle when available
+    if (!CustomVehicleLoadFromBuilds("main/GameEngine/builds")) {
+        CustomVehicleLoadFromBuilds("GameEngine/builds");
+    }
 
     VehicleType current = VEHICLE_AIRPLANE;
     float spinner = 0.0f;

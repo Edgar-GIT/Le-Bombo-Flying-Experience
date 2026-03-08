@@ -34,4 +34,6 @@ const EngineUserConfig kUserConfig = {
 
     .maxLogEntries = 240,
     .trimLogEntries = 40,
+    .maxUndoEntries = 256,
+    .maxCacheEntries = 1024,
 };

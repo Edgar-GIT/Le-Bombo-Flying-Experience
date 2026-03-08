@@ -204,6 +204,8 @@ void AttackTrySpawnBomb(bool triggerPressed,
         bombLocal = (Vector3){ 0.0f, -0.8f, -0.8f };
     } else if (activeVehicle == VEHICLE_JET) {
         bombLocal = (Vector3){ 0.0f, -0.5f, -1.7f };
+    } else if (activeVehicle == VEHICLE_CUSTOM) {
+        bombLocal = (Vector3){ 0.0f, -0.55f, -0.45f };
     } else if (activeVehicle == VEHICLE_HAWK) {
         //hawk: usa 3 hardpoints para largar bombas separadas
         static int hawkHardpointCycle = 0;
