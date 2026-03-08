@@ -76,23 +76,18 @@ Build tool options:
 ## Build And Run
 
 All commands are executed from the repository root.
+`zig build` now runs dependency setup automatically before compiling.
+
+First-time setup only:
+
+```bash
+zig build setup
+```
 
 ### Windows
 
-Prerequisites (MSYS2 UCRT64 recommended):
-
-```bash
-pacman -S --needed mingw-w64-ucrt-x86_64-raylib zig
-```
-
-If `zig build` says it cannot find `raylib`, define one of these before building:
-
-```powershell
-$env:RAYLIB_ROOT="C:/msys64/ucrt64"
-# or
-$env:RAYLIB_LIB_DIR="C:/msys64/ucrt64/lib"
-$env:RAYLIB_INCLUDE_DIR="C:/msys64/ucrt64/include"
-```
+Auto setup script installs missing tools using `winget`/`choco` + MSYS2 and configures `PATH` + `RAYLIB_*` variables.
+Run PowerShell as Administrator the first time for a smoother setup.
 
 Build everything:
 
@@ -120,12 +115,8 @@ zig build run-preview
 
 ### Linux
 
-Prerequisites:
-
-```bash
-sudo apt update
-sudo apt install -y zig libraylib-dev
-```
+Auto setup script installs missing packages via `apt` / `dnf` / `pacman`.
+It may ask for `sudo` password.
 
 Build everything:
 
@@ -153,11 +144,7 @@ zig build run-preview
 
 ### macOS
 
-Prerequisites (Homebrew):
-
-```bash
-brew install zig raylib
-```
+Auto setup script installs missing tools via Homebrew.
 
 Build everything:
 

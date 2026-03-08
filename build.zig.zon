@@ -1,0 +1,13 @@
+.{
+    .name = .le_bombo_flying_experience,
+    .version = "0.1.0",
+    .fingerprint = 0xd9df0842b36ac283,
+    .minimum_zig_version = "0.15.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "README.md",
+        "scripts",
+        "main",
+    },
+}
