@@ -49,7 +49,7 @@ static void BuildTimestamp(char out[32]) {
     std::strftime(out, 32, "%Y-%m-%d %H:%M:%S", &tmNow);
 }
 
-// escapes text so it can be safely embedded in json
+// text escaping
 static std::string EscapeJson(const std::string &text) {
     std::string out;
     out.reserve(text.size() + 16);
@@ -66,7 +66,7 @@ static std::string EscapeJson(const std::string &text) {
     return out;
 }
 
-// resolves the project root by searching for the main game marker file
+// root resolving
 static std::filesystem::path ResolveProjectRootPath() {
     std::filesystem::path current = std::filesystem::current_path();
     while (true) {
@@ -80,7 +80,7 @@ static std::filesystem::path ResolveProjectRootPath() {
     return std::filesystem::current_path();
 }
 
-// resolves and creates the temporary cache file path for this session
+// cache file system
 static std::filesystem::path ResolveSessionCachePath() {
     const std::filesystem::path root = ResolveProjectRootPath();
     const std::filesystem::path cacheDir = root / "main" / "GameEngine" / "cache";
@@ -89,7 +89,7 @@ static std::filesystem::path ResolveSessionCachePath() {
     return cacheDir / "engine_session_cache.json";
 }
 
-// generates a compact fingerprint used to detect scene and shotpoint changes
+// scene and shotpoint changes
 static std::string BuildSceneFingerprint(const std::vector<EditorObject> &objects,
                                          const std::vector<Shotpoint> &shotpoints,
                                          const std::vector<EditorLayer> &layers) {
