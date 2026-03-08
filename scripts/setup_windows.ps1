@@ -23,8 +23,58 @@ function Add-PathPersistent {
     }
 }
 
+function Find-ZigExe {
+    $cmd = Get-Command zig -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+
+    $wingetRoot = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages"
+    if (Test-Path $wingetRoot) {
+        $zig = Get-ChildItem -Path $wingetRoot -Recurse -Filter zig.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($zig) { return $zig.FullName }
+    }
+
+    return $null
+}
+
+function Install-ZigDirect {
+    param([string]$InstallRoot)
+
+    New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
+    $indexUrl = "https://ziglang.org/download/index.json"
+    $index = Invoke-RestMethod -Uri $indexUrl -UseBasicParsing
+
+    $stable = $index.PSObject.Properties |
+        Where-Object { $_.Name -match '^\d+\.\d+\.\d+$' } |
+        Sort-Object { [Version]$_.Name } -Descending |
+        Select-Object -First 1
+    if (-not $stable) {
+        throw "[setup] failed to resolve zig stable version from index.json"
+    }
+
+    $pkg = $stable.Value."x86_64-windows"
+    if (-not $pkg -or -not $pkg.tarball) {
+        throw "[setup] failed to resolve zig x86_64-windows package"
+    }
+
+    $zipPath = Join-Path $env:TEMP "lbfe_zig_windows.zip"
+    if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+    Invoke-WebRequest -Uri $pkg.tarball -OutFile $zipPath -UseBasicParsing
+
+    $extractRoot = Join-Path $InstallRoot "zig-portable"
+    if (Test-Path $extractRoot) { Remove-Item $extractRoot -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
+    Expand-Archive -Path $zipPath -DestinationPath $extractRoot -Force
+
+    $zigExe = Get-ChildItem -Path $extractRoot -Recurse -Filter zig.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $zigExe) {
+        throw "[setup] zig.exe not found after extracting portable archive"
+    }
+
+    Add-PathPersistent -Entry (Split-Path -Parent $zigExe.FullName)
+}
+
 function Install-ZigIfMissing {
-    if (Has-Command "zig") { return }
+    if (Find-ZigExe) { return }
 
     if (Has-Command "winget") {
         winget install -e --id zig.zig --accept-package-agreements --accept-source-agreements
@@ -36,7 +86,21 @@ function Install-ZigIfMissing {
         return
     }
 
-    throw "[setup] zig not found and no installer was detected"
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $projectRoot = Split-Path -Parent $scriptDir
+    $portableRoot = Join-Path $projectRoot ".tools"
+    Install-ZigDirect -InstallRoot $portableRoot
+}
+
+function Install-MSYS2Direct {
+    param([string]$MSYSRoot)
+
+    $installer = Join-Path $env:TEMP "msys2-installer.exe"
+    $url = "https://github.com/msys2/msys2-installer/releases/latest/download/msys2-x86_64-latest.exe"
+    if (Test-Path $installer) { Remove-Item $installer -Force }
+    Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
+
+    Start-Process -FilePath $installer -ArgumentList @("in", "--confirm-command", "--accept-messages", "--root", $MSYSRoot) -Wait -NoNewWindow
 }
 
 function Ensure-MSYS2 {
@@ -46,7 +110,7 @@ function Ensure-MSYS2 {
     if (Has-Command "winget") {
         winget install -e --id MSYS2.MSYS2 --accept-package-agreements --accept-source-agreements
     } else {
-        throw "[setup] MSYS2 is required to install raylib but winget is not available"
+        Install-MSYS2Direct -MSYSRoot $msysRoot
     }
 
     if (-not (Test-Path $msysRoot)) {

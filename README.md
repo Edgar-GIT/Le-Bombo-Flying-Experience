@@ -112,7 +112,9 @@ zig build setup
 
 ### Windows
 
-Auto setup script installs missing tools using `winget`/`choco` + MSYS2 and configures `PATH` + `RAYLIB_*` variables.
+Auto setup script installs missing tools automatically.
+It tries `winget`/`choco` first and falls back to direct Zig/MSYS2 download when package managers are not available.
+It also configures `PATH` + `RAYLIB_*` variables.
 Run PowerShell as Administrator the first time for a smoother setup.
 
 Build everything:

@@ -20,16 +20,6 @@ function Find-ZigExe {
     return $null
 }
 
-if (-not (Has-Command "zig")) {
-    if (Has-Command "winget") {
-        winget install -e --id zig.zig --accept-package-agreements --accept-source-agreements
-    } elseif (Has-Command "choco") {
-        choco install zig -y
-    } else {
-        throw "[bootstrap] winget or choco is required to install zig automatically"
-    }
-}
-
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 & (Join-Path $scriptDir "setup_windows.ps1")
 
