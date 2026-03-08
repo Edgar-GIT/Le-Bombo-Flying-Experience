@@ -94,6 +94,10 @@ fn findProjectRoot(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn buildGame(allocator: std.mem.Allocator, _: []const u8) !void {
+    var temp_arena = std.heap.ArenaAllocator.init(allocator);
+    defer temp_arena.deinit();
+    const temp_allocator = temp_arena.allocator();
+
     const runtime_lib_name = if (builtin.os.tag == .windows)
         "lbfe_zig_runtime.lib"
     else
@@ -151,13 +155,17 @@ fn buildGame(allocator: std.mem.Allocator, _: []const u8) !void {
         "-o",
         output,
     });
-    try appendPlatformRaylibFlags(allocator, &args);
+    try appendPlatformRaylibFlags(temp_allocator, &args);
 
     try runCommand(allocator, args.items);
     _ = stripBinary(allocator, output) catch {};
 }
 
 fn buildPreviewer(allocator: std.mem.Allocator, platform: []const u8) !void {
+    var temp_arena = std.heap.ArenaAllocator.init(allocator);
+    defer temp_arena.deinit();
+    const temp_allocator = temp_arena.allocator();
+
     const suffix = if (builtin.os.tag == .windows) ".exe" else "";
     const output = try std.fmt.allocPrint(
         allocator,
@@ -181,7 +189,7 @@ fn buildPreviewer(allocator: std.mem.Allocator, platform: []const u8) !void {
         "-o",
         output,
     });
-    try appendPlatformRaylibFlags(allocator, &args);
+    try appendPlatformRaylibFlags(temp_allocator, &args);
 
     try runCommand(allocator, args.items);
     _ = stripBinary(allocator, output) catch {};
@@ -244,8 +252,8 @@ fn appendWindowsRaylibPaths(allocator: std.mem.Allocator, args: *std.array_list.
     try appendWindowsPathFromEnv(allocator, args, "RAYLIB_INCLUDE_DIR", false);
 
     // Tries common MSYS2 install prefixes used by raylib packages on Windows.
-    try appendWindowsSearchPrefixIfExists(allocator, args, "C:/msys64/ucrt64");
-    try appendWindowsSearchPrefixIfExists(allocator, args, "C:/msys64/mingw64");
+    try appendWindowsRootDirIfExists(allocator, args, "C:/msys64/ucrt64");
+    try appendWindowsRootDirIfExists(allocator, args, "C:/msys64/mingw64");
 }
 
 fn appendWindowsPathFromEnv(
@@ -259,11 +267,8 @@ fn appendWindowsPathFromEnv(
 
     if (add_include_and_lib) {
         const include_dir = try std.fmt.allocPrint(allocator, "{s}/include", .{value});
-        defer allocator.free(include_dir);
         const lib_dir = try std.fmt.allocPrint(allocator, "{s}/lib", .{value});
-        defer allocator.free(lib_dir);
-
-        try appendWindowsSearchPrefixIfExists(allocator, args, value);
+        try appendWindowsRootDirIfExists(allocator, args, value);
         try appendWindowsLibDirIfExists(allocator, args, lib_dir);
         try appendWindowsIncludeDirIfExists(allocator, args, include_dir);
         return;
@@ -276,15 +281,16 @@ fn appendWindowsPathFromEnv(
     }
 }
 
-fn appendWindowsSearchPrefixIfExists(
+fn appendWindowsRootDirIfExists(
     allocator: std.mem.Allocator,
     args: *std.array_list.Managed([]const u8),
-    prefix: []const u8,
+    root_dir: []const u8,
 ) !void {
-    if (!dirExistsAbsolute(prefix)) return;
-    const owned = try allocator.dupe(u8, prefix);
-    try args.append("--search-prefix");
-    try args.append(owned);
+    if (!dirExistsAbsolute(root_dir)) return;
+    const include_dir = try std.fmt.allocPrint(allocator, "{s}/include", .{root_dir});
+    const lib_dir = try std.fmt.allocPrint(allocator, "{s}/lib", .{root_dir});
+    try appendWindowsIncludeDirIfExists(allocator, args, include_dir);
+    try appendWindowsLibDirIfExists(allocator, args, lib_dir);
 }
 
 fn appendWindowsLibDirIfExists(

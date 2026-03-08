@@ -50,7 +50,7 @@ pub fn build(b: *std.Build) void {
     const engine_step = b.step("engine", "Build the Game Engine editor");
     engine_step.dependOn(&engine_script.step);
 
-    const run_game_cmd = b.addSystemCommand(&.{gameBinaryPath()});
+    const run_game_cmd = createRunGameCommand(b);
     run_game_cmd.step.dependOn(&game_script.step);
     const run_game_step = b.step("run", "Build and run LBFE");
     run_game_step.dependOn(&run_game_cmd.step);
@@ -60,7 +60,7 @@ pub fn build(b: *std.Build) void {
     const run_engine_step = b.step("run-engine", "Build and run the Game Engine");
     run_engine_step.dependOn(&run_engine_cmd.step);
 
-    const run_preview_cmd = b.addSystemCommand(&.{previewBinaryPath()});
+    const run_preview_cmd = createRunPreviewCommand(b);
     run_preview_cmd.step.dependOn(&preview_script.step);
     const run_preview_step = b.step("run-preview", "Build and run the vehicle previewer");
     run_preview_step.dependOn(&run_preview_cmd.step);
@@ -81,6 +81,21 @@ fn createSetupCommand(b: *std.Build) *std.Build.Step.Run {
             "sh",
             "scripts/setup.sh",
         }),
+    };
+}
+
+fn createRunGameCommand(b: *std.Build) *std.Build.Step.Run {
+    return switch (builtin.os.tag) {
+        .windows => b.addSystemCommand(&.{ "cmd", "/C", "cd /d main && LBFE.exe" }),
+        else => b.addSystemCommand(&.{ "sh", "-c", "cd main && ./LBFE" }),
+    };
+}
+
+fn createRunPreviewCommand(b: *std.Build) *std.Build.Step.Run {
+    return switch (builtin.os.tag) {
+        .windows => b.addSystemCommand(&.{ "cmd", "/C", "cd /d main && build\\windows\\vehicle_previewer.exe" }),
+        .macos => b.addSystemCommand(&.{ "sh", "-c", "cd main && ./build/macos/vehicle_previewer" }),
+        else => b.addSystemCommand(&.{ "sh", "-c", "cd main && ./build/linux/vehicle_previewer" }),
     };
 }
 
