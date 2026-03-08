@@ -76,26 +76,13 @@ Build tool options:
 ## Build And Run
 
 All commands are executed from the repository root.
-`zig build` now runs dependency setup automatically before compiling.
 
-Zero-setup bootstrap (recommended for first run):
+### One Command Setup + Run
 
-Windows (PowerShell):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap_windows.ps1
-```
-
-If `powershell` is not recognized, run this in `cmd.exe`:
+Windows (`cmd.exe`):
 
 ```cmd
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\scripts\bootstrap_windows.ps1
-```
-
-If you use PowerShell 7:
-
-```powershell
-pwsh -ExecutionPolicy Bypass -File .\scripts\bootstrap_windows.ps1
 ```
 
 Linux/macOS:
@@ -104,121 +91,18 @@ Linux/macOS:
 sh ./scripts/bootstrap.sh
 ```
 
-First-time setup only:
+### After First Run
 
 ```bash
-zig build setup
+zig build run          # main game
+zig build run-engine   # Game Engine
+zig build run-preview  # vehicle previewer
 ```
 
-### Windows
-
-Auto setup script installs missing tools automatically.
-It tries `winget`/`choco` first and falls back to direct Zig/MSYS2 download when package managers are not available.
-It also configures `PATH` + `RAYLIB_*` variables.
-Run PowerShell as Administrator the first time for a smoother setup.
-
-Build everything:
+### Build Only
 
 ```bash
 zig build
-```
-
-Run main game:
-
-```bash
-zig build run
-```
-
-Run Game Engine:
-
-```bash
-zig build run-engine
-```
-
-Run vehicle previewer:
-
-```bash
-zig build run-preview
-```
-
-### Linux
-
-Auto setup script installs missing packages via `apt` / `dnf` / `pacman`.
-It may ask for `sudo` password.
-
-Build everything:
-
-```bash
-zig build
-```
-
-Run main game:
-
-```bash
-zig build run
-```
-
-Run Game Engine:
-
-```bash
-zig build run-engine
-```
-
-Run vehicle previewer:
-
-```bash
-zig build run-preview
-```
-
-Quick local test (Linux):
-
-```bash
-zig build setup
-zig build
-zig build run
-zig build run-engine
-```
-
-Expected binaries:
-
-```bash
-ls -lh main/LBFE main/build/linux/vehicle_previewer main/GameEngine/src/GameEngine
-```
-
-### macOS
-
-Auto setup script installs missing tools via Homebrew.
-
-Build everything:
-
-```bash
-zig build
-```
-
-Run main game:
-
-```bash
-zig build run
-```
-
-Run Game Engine:
-
-```bash
-zig build run-engine
-```
-
-Run vehicle previewer:
-
-```bash
-zig build run-preview
-```
-
-### Extra Build Steps
-
-```bash
-zig build game     # build only LBFE
-zig build engine   # build only Game Engine
-zig build preview  # build only vehicle_previewer
 ```
 
 ## Game Engine

@@ -21,6 +21,7 @@ function Find-ZigExe {
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptDir
 & (Join-Path $scriptDir "setup_windows.ps1")
 
 $zigExe = Find-ZigExe
@@ -29,5 +30,10 @@ if (-not $zigExe) {
 }
 
 Write-Host "[bootstrap] using zig: $zigExe"
-& $zigExe build setup
-& $zigExe build run
+Push-Location $projectRoot
+try {
+    & $zigExe build setup
+    & $zigExe build run
+} finally {
+    Pop-Location
+}

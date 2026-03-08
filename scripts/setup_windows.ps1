@@ -1,4 +1,6 @@
 $ErrorActionPreference = "Stop"
+$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $ScriptRoot
 
 # This script auto installs zig and raylib on Windows when tools are available.
 
@@ -86,9 +88,7 @@ function Install-ZigIfMissing {
         return
     }
 
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-    $projectRoot = Split-Path -Parent $scriptDir
-    $portableRoot = Join-Path $projectRoot ".tools"
+    $portableRoot = Join-Path $ProjectRoot ".tools"
     Install-ZigDirect -InstallRoot $portableRoot
 }
 
