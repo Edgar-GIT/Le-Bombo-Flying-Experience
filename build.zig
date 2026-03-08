@@ -28,11 +28,6 @@ pub fn build(b: *std.Build) void {
         "run",
         "main/GameEngine/src/zig/engine_build.zig",
     });
-    const setup_script = createSetupCommand(b);
-
-    const setup_step = b.step("setup", "Install/check dependencies and configure paths");
-    setup_step.dependOn(&setup_script.step);
-
     const game_step = b.step("game", "Build the main game binary (LBFE)");
     game_step.dependOn(&game_script.step);
 
@@ -61,16 +56,6 @@ pub fn build(b: *std.Build) void {
     run_preview_step.dependOn(&run_preview_cmd.step);
 
     b.default_step.dependOn(&all_script.step);
-}
-
-fn createSetupCommand(b: *std.Build) *std.Build.Step.Run {
-    return switch (builtin.os.tag) {
-        .windows => b.addSystemCommand(&.{ "cmd", "/C", "scripts\\setup_windows.cmd" }),
-        else => b.addSystemCommand(&.{
-            "sh",
-            "scripts/setup.sh",
-        }),
-    };
 }
 
 fn createRunGameCommand(b: *std.Build) *std.Build.Step.Run {

@@ -77,63 +77,59 @@ Build tool options:
 
 All commands are executed from the repository root.
 
-### One Command Setup + Run
+### Windows (Manual, clean PC)
 
-Windows (`cmd.exe`):
-
-```cmd
-.\scripts\bootstrap_windows.cmd
-```
-
-Linux/macOS:
-
-```bash
-sh ./scripts/bootstrap.sh
-```
-
-### After First Run
+1. Install Git for Windows.
+2. Install Zig:
+   - Option A: `winget install -e --id zig.zig`
+   - Option B: download Zig for Windows from `https://ziglang.org/download/`, extract it, add the folder with `zig.exe` to `PATH`.
+3. Install MSYS2 from `https://www.msys2.org/`.
+4. Open `MSYS2 UCRT64` and install dependencies:
 
 ```bash
-zig build run          # main game
-zig build run-engine   # Game Engine
-zig build run-preview  # vehicle previewer
+pacman -Syu
+pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-raylib mingw-w64-ucrt-x86_64-glfw
+```
+
+5. In PowerShell (or cmd), configure raylib paths:
+
+```powershell
+setx RAYLIB_ROOT "C:/msys64/ucrt64"
+setx RAYLIB_LIB_DIR "C:/msys64/ucrt64/lib"
+setx RAYLIB_INCLUDE_DIR "C:/msys64/ucrt64/include"
+```
+
+6. Close and reopen terminal, then build/run:
+
+```bash
+zig build run
+zig build run-engine
+zig build run-preview
+```
+
+### Linux (Manual)
+
+```bash
+sudo apt update
+sudo apt install -y zig libraylib-dev build-essential pkg-config
+zig build run
+zig build run-engine
+zig build run-preview
+```
+
+### macOS (Manual)
+
+```bash
+brew install zig raylib
+zig build run
+zig build run-engine
+zig build run-preview
 ```
 
 ### Build Only
 
 ```bash
 zig build
-```
-
-### Manual Setup Tutorial
-
-Use this if you want to install dependencies yourself first.
-
-Windows (PowerShell):
-
-```powershell
-winget install -e --id zig.zig
-winget install -e --id MSYS2.MSYS2
-C:\msys64\usr\bin\bash.exe -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-raylib"
-$env:RAYLIB_ROOT="C:/msys64/ucrt64"
-$env:RAYLIB_LIB_DIR="C:/msys64/ucrt64/lib"
-$env:RAYLIB_INCLUDE_DIR="C:/msys64/ucrt64/include"
-zig build run
-```
-
-Linux:
-
-```bash
-sudo apt update
-sudo apt install -y zig libraylib-dev build-essential pkg-config
-zig build run
-```
-
-macOS:
-
-```bash
-brew install zig raylib
-zig build run
 ```
 
 ## Game Engine
