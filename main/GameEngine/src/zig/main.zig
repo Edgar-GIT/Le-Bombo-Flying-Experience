@@ -213,6 +213,9 @@ fn appendPlatformRaylibFlags(allocator: std.mem.Allocator, args: *std.array_list
             try appendWindowsRaylibPaths(allocator, args);
             try args.appendSlice(&.{
                 "-lraylib",
+            });
+            try appendWindowsGlfwLink(allocator, args);
+            try args.appendSlice(&.{
                 "-lopengl32",
                 "-lgdi32",
                 "-lwinmm",
@@ -243,6 +246,61 @@ fn appendPlatformRaylibFlags(allocator: std.mem.Allocator, args: *std.array_list
             "-lX11",
         }),
     }
+}
+
+fn appendWindowsGlfwLink(allocator: std.mem.Allocator, args: *std.array_list.Managed([]const u8)) !void {
+    if (try appendWindowsGlfwFromEnv(allocator, args, "RAYLIB_LIB_DIR")) return;
+    if (try appendWindowsGlfwFromRootEnv(allocator, args, "RAYLIB_ROOT")) return;
+    if (try appendWindowsGlfwFromLibDir(allocator, args, "C:/msys64/ucrt64/lib")) return;
+    if (try appendWindowsGlfwFromLibDir(allocator, args, "C:/msys64/mingw64/lib")) return;
+
+    // Fallback generic name for environments where glfw is in the default linker search path.
+    try args.append("-lglfw3");
+}
+
+fn appendWindowsGlfwFromEnv(
+    allocator: std.mem.Allocator,
+    args: *std.array_list.Managed([]const u8),
+    env_name: []const u8,
+) !bool {
+    const lib_dir = std.process.getEnvVarOwned(allocator, env_name) catch return false;
+    return appendWindowsGlfwFromLibDir(allocator, args, lib_dir);
+}
+
+fn appendWindowsGlfwFromRootEnv(
+    allocator: std.mem.Allocator,
+    args: *std.array_list.Managed([]const u8),
+    env_name: []const u8,
+) !bool {
+    const root_dir = std.process.getEnvVarOwned(allocator, env_name) catch return false;
+    const lib_dir = try std.fmt.allocPrint(allocator, "{s}/lib", .{root_dir});
+    return appendWindowsGlfwFromLibDir(allocator, args, lib_dir);
+}
+
+fn appendWindowsGlfwFromLibDir(
+    allocator: std.mem.Allocator,
+    args: *std.array_list.Managed([]const u8),
+    lib_dir: []const u8,
+) !bool {
+    if (!dirExistsAbsolute(lib_dir)) return false;
+
+    var dir = std.fs.openDirAbsolute(lib_dir, .{ .iterate = true }) catch return false;
+    defer dir.close();
+
+    var it = dir.iterate();
+    while (try it.next()) |entry| {
+        if (entry.kind != .file) continue;
+
+        const name = entry.name;
+        if (std.ascii.indexOfIgnoreCase(name, "glfw") == null) continue;
+        if (!(std.mem.endsWith(u8, name, ".a") or std.mem.endsWith(u8, name, ".lib"))) continue;
+
+        const full_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ lib_dir, name });
+        try args.append(full_path);
+        return true;
+    }
+
+    return false;
 }
 
 fn appendWindowsRaylibPaths(allocator: std.mem.Allocator, args: *std.array_list.Managed([]const u8)) !void {
