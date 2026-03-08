@@ -73,57 +73,113 @@ Build tool options:
 - `--no-zig`
 - `--help`
 
-## Build And Run (Zig - Recommended)
+## Build And Run
 
-Use these commands from the repository root on Linux, macOS, or Windows:
+All commands are executed from the repository root.
 
-```bash
-zig build              # builds LBFE + vehicle_previewer
-zig build run          # builds and runs LBFE
-zig build preview      # builds only vehicle_previewer
-zig build run-preview  # builds and runs vehicle_previewer
-zig build engine       # builds GameEngine editor
-zig build run-engine   # builds and runs GameEngine editor
-```
+### Windows
 
-### Windows Notes
-
-- Run commands from the project root in the same terminal where `zig` and `raylib` are available.
-- If you use MSYS2 UCRT64, install dependencies there (example):
+Prerequisites (MSYS2 UCRT64 recommended):
 
 ```bash
 pacman -S --needed mingw-w64-ucrt-x86_64-raylib zig
 ```
 
-- Then run:
+Build everything:
+
+```bash
+zig build
+```
+
+Run main game:
 
 ```bash
 zig build run
+```
+
+Run Game Engine:
+
+```bash
 zig build run-engine
 ```
 
-### Legacy Zig Script Path
+Run vehicle previewer:
 
 ```bash
-zig run main/GameEngine/src/zig/main.zig -- --all
-zig run main/GameEngine/src/zig/engine_build.zig
+zig build run-preview
 ```
 
-If you are already inside `main/GameEngine/src/zig`, use:
+### Linux
+
+Prerequisites:
 
 ```bash
-zig run main.zig -- --all
-zig run engine_build.zig
+sudo apt update
+sudo apt install -y zig libraylib-dev
 ```
 
-### C Manual Path (Linux)
+Build everything:
 
 ```bash
-gcc -std=c99 -O2 \
-    main/src/main.c main/src/game.c main/src/ui.c main/src/obj.c \
-    main/src/atacks.c main/src/screens.c main/src/config.c main/src/custom_vehicle.c \
-    -o main/LBFE \
-    -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+zig build
+```
+
+Run main game:
+
+```bash
+zig build run
+```
+
+Run Game Engine:
+
+```bash
+zig build run-engine
+```
+
+Run vehicle previewer:
+
+```bash
+zig build run-preview
+```
+
+### macOS
+
+Prerequisites (Homebrew):
+
+```bash
+brew install zig raylib
+```
+
+Build everything:
+
+```bash
+zig build
+```
+
+Run main game:
+
+```bash
+zig build run
+```
+
+Run Game Engine:
+
+```bash
+zig build run-engine
+```
+
+Run vehicle previewer:
+
+```bash
+zig build run-preview
+```
+
+### Extra Build Steps
+
+```bash
+zig build game     # build only LBFE
+zig build engine   # build only Game Engine
+zig build preview  # build only vehicle_previewer
 ```
 
 ## Game Engine
@@ -248,36 +304,6 @@ The editor lives in `main/GameEngine/` and is focused on creating fully playable
   - arrows look
   - `Shift` speed up
   - `Esc` close
-
-## Build And Run (Game Engine - Manual)
-
-Recommended:
-
-```bash
-zig build run-engine
-```
-
-Linux manual compile:
-
-```bash
-g++ -std=c++17 -O3 \
-    main/GameEngine/src/main/main.cpp \
-    main/GameEngine/src/main/config.cpp \
-    main/GameEngine/src/main/gui_manager.cpp \
-    main/GameEngine/src/main/gui_workflow.cpp \
-    main/GameEngine/src/main/gui_shotpoints.cpp \
-    main/GameEngine/src/main/main_gui.cpp \
-    main/GameEngine/src/main/vehicle_export.cpp \
-    main/GameEngine/src/main/vehicle_import.cpp \
-    main/GameEngine/src/main/persistence.cpp \
-    main/GameEngine/src/main/persistence_io.cpp \
-    main/GameEngine/src/main/persistence_picker.cpp \
-    main/GameEngine/src/main/workspace_tabs.cpp \
-    main/GameEngine/src/main/piece_library.cpp \
-    -I main/GameEngine/src/include \
-    -o main/GameEngine/src/GameEngine \
-    -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
-```
 
 ## Custom Vehicle Runtime Pipeline
 
