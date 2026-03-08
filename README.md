@@ -142,6 +142,21 @@ Run vehicle previewer:
 zig build run-preview
 ```
 
+Quick local test (Linux):
+
+```bash
+zig build setup
+zig build
+zig build run
+zig build run-engine
+```
+
+Expected binaries:
+
+```bash
+ls -lh main/LBFE main/build/linux/vehicle_previewer main/GameEngine/src/GameEngine
+```
+
 ### macOS
 
 Auto setup script installs missing tools via Homebrew.
